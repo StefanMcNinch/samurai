@@ -428,11 +428,11 @@
                 return; // Deck is empty or invalid
             }
 
-            const drawnTile = deck.pop();
-            myHandTiles.push(drawnTile);
+            const  = deck.pop();
+            myHandTiles.push();
             
             // Add the new tile to the player's hand visually
-            const tileEl = createTileElement(drawnTile, true);
+            const tileEl = createTileElement(drawnTile, false);
             document.getElementById('playerHand').appendChild(tileEl);
             
             // Sync the game state to the opponent
@@ -910,25 +910,40 @@
             draggedElement.style.top = (e.clientY - rect.top - dragOffset.y) + 'px';
         }
         
-        function dropTile(e) {
-            if (!draggedElement) return;
-            
-            const tile = draggedElement;
-            tile.classList.remove('dragging');
-            
-            const handRect = document.getElementById('playerHand').getBoundingClientRect();
-            if (e.clientX >= handRect.left && e.clientX <= handRect.right &&
-                e.clientY >= handRect.top && e.clientY <= handRect.bottom) {
+        function dropTile(event) {
+            if (draggedTileEl) {
+                const boardContainer = document.getElementById('boardContainer');
                 
-                if (tile.parentElement.id !== 'playerHand') {
-                    document.getElementById('playerHand').appendChild(tile);
+                const boardRect = boardContainer.getBoundingClientRect();
+                let x = event.clientX - boardRect.left;
+                let y = event.clientY - boardRect.top;
+                
+                const tileId = draggedTileEl.dataset.tileId;
+                
+                // Find the tile in the player's hand
+                let tileIndex = myHandTiles.findIndex(t => t.id === tileId);
+                if (tileIndex !== -1) {
+                    const tile = myHandTiles.splice(tileIndex, 1)[0];
                     
-                    if (tile.dataset.faceDown === 'true') {
-                        tile.dataset.faceDown = 'false';
-                        updateTileVisual(tile);
-                    }
+                    // Update the tile's position and face-up state
+                    tile.x = `${x}px`;
+                    tile.y = `${y}px`;
+                    tile.faceDown = false; // Set to face-up when placed on the board
+                    
+                    // Add the tile to the main game state
+                    gameState.tiles.push(tile);
+                    
+                    // The dropped tile is now a board tile
+                    draggedTileEl.dataset.location = 'board';
                 }
+                
+                draggedTileEl = null;
+                isDragging = false;
+                
+                updateUI();
+                syncGameState();
             }
+        }
             else if (e.clientX >= document.getElementById('boardContainer').getBoundingClientRect().left) {
                 if (tile.parentElement.id !== 'boardContainer') {
                     document.getElementById('boardContainer').appendChild(tile);
