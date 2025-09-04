@@ -428,11 +428,11 @@
                 return; // Deck is empty or invalid
             }
 
-            const  = deck.pop();
-            myHandTiles.push();
+            const drawnTile = deck.pop();
+            myHandTiles.push(drawnTile);
             
             // Add the new tile to the player's hand visually
-            const tileEl = createTileElement(drawnTile, false);
+            const tileEl = createTileElement(drawnTile, true);
             document.getElementById('playerHand').appendChild(tileEl);
             
             // Sync the game state to the opponent
@@ -546,7 +546,28 @@
                 connectToHost();
             }, 1000);
         }
-
+        
+        // Play solo mode
+        function playSolo() {
+            isHost = true;
+            myPlayer = 1;
+            showGame();
+            initGame();
+            document.getElementById('status').textContent = 'Playing Solo Mode';
+            document.getElementById('status').classList.add('connected');
+        }
+        
+        // Generate room code
+        function generateRoomCode() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+        
+        // Show game screen
+        function showGame() {
+            document.getElementById('menuScreen').classList.add('hidden');
+            document.getElementById('gameContainer').classList.remove('hidden');
+        }
+        
         // Initialize PeerJS
         function initPeer(customId = null) {
             const peerId = customId || 'samurai-' + Math.random().toString(36).substring(2, 9);
@@ -559,14 +580,13 @@
                 console.log('Connected with ID:', id);
                 
                 if (isHost) {
-                    initGame(); // Initialize the game as the host
+                    // Wait for connection
                     peer.on('connection', (connection) => {
                         conn = connection;
                         setupConnection();
                         document.getElementById('status').textContent = 'Opponent connected!';
                         document.getElementById('status').classList.remove('waiting');
                         document.getElementById('status').classList.add('connected');
-                        syncGameState(); // Sync the initial state to the new player
                     });
                 }
             });
@@ -890,40 +910,25 @@
             draggedElement.style.top = (e.clientY - rect.top - dragOffset.y) + 'px';
         }
         
-        function dropTile(event) {
-            if (draggedTileEl) {
-                const boardContainer = document.getElementById('boardContainer');
+        function dropTile(e) {
+            if (!draggedElement) return;
+            
+            const tile = draggedElement;
+            tile.classList.remove('dragging');
+            
+            const handRect = document.getElementById('playerHand').getBoundingClientRect();
+            if (e.clientX >= handRect.left && e.clientX <= handRect.right &&
+                e.clientY >= handRect.top && e.clientY <= handRect.bottom) {
                 
-                const boardRect = boardContainer.getBoundingClientRect();
-                let x = event.clientX - boardRect.left;
-                let y = event.clientY - boardRect.top;
-                
-                const tileId = draggedTileEl.dataset.tileId;
-                
-                // Find the tile in the player's hand
-                let tileIndex = myHandTiles.findIndex(t => t.id === tileId);
-                if (tileIndex !== -1) {
-                    const tile = myHandTiles.splice(tileIndex, 1)[0];
+                if (tile.parentElement.id !== 'playerHand') {
+                    document.getElementById('playerHand').appendChild(tile);
                     
-                    // Update the tile's position and face-up state
-                    tile.x = `${x}px`;
-                    tile.y = `${y}px`;
-                    tile.faceDown = false; // Set to face-up when placed on the board
-                    
-                    // Add the tile to the main game state
-                    gameState.tiles.push(tile);
-                    
-                    // The dropped tile is now a board tile
-                    draggedTileEl.dataset.location = 'board';
+                    if (tile.dataset.faceDown === 'true') {
+                        tile.dataset.faceDown = 'false';
+                        updateTileVisual(tile);
+                    }
                 }
-                
-                draggedTileEl = null;
-                isDragging = false;
-                
-                updateUI();
-                syncGameState();
             }
-        }
             else if (e.clientX >= document.getElementById('boardContainer').getBoundingClientRect().left) {
                 if (tile.parentElement.id !== 'boardContainer') {
                     document.getElementById('boardContainer').appendChild(tile);
