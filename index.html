@@ -66,13 +66,12 @@
         }
         
         .status {
-            padding: 8px;
+            padding: 10px;
             background: #e8f4f8;
             border-left: 4px solid #3498db;
             border-radius: 5px;
             margin-bottom: 10px;
-            font-size: 12px;
-            word-break: break-all;
+            font-size: 14px;
         }
         
         .status.connected {
@@ -80,41 +79,43 @@
             border-left-color: #28a745;
         }
         
-        input {
-            width: 100%;
-            padding: 8px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            margin-bottom: 10px;
+        .status.waiting {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        
+        .room-link {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            word-break: break-all;
+            font-size: 12px;
+            border: 2px solid #dee2e6;
         }
         
         button {
-            padding: 8px 15px;
-            background: #e67e22;
+            width: 100%;
+            padding: 12px 15px;
+            background: linear-gradient(135deg, #e67e22, #d35400);
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s;
             font-weight: 600;
-            margin-right: 5px;
+            margin-bottom: 10px;
+            font-size: 16px;
         }
         
         button:hover:not(:disabled) {
-            background: #d35400;
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4);
         }
         
         button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-        }
-        
-        #gameBoard {
-            display: none;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
         }
         
         .board-container {
@@ -252,15 +253,6 @@
             margin-bottom: 10px;
         }
         
-        .tile-stack {
-            position: absolute;
-        }
-        
-        .tile-in-stack {
-            position: absolute;
-            pointer-events: auto;
-        }
-        
         .game-info {
             display: flex;
             justify-content: space-between;
@@ -281,18 +273,77 @@
             border-radius: 8px;
             margin-top: 10px;
         }
+        
+        .menu-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        
+        .menu-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 400px;
+        }
+        
+        .menu-content h1 {
+            font-size: 3em;
+            margin-bottom: 30px;
+        }
+        
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .room-input {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
-    <div class="main-container">
+    <div class="menu-screen" id="menuScreen">
+        <div class="menu-content">
+            <h1>侍</h1>
+            <div class="menu-buttons">
+                <button onclick="createRoom()">Create New Game</button>
+                <input type="text" class="room-input" id="roomCodeInput" placeholder="Enter room code">
+                <button onclick="joinRoom()">Join Game</button>
+                <button onclick="playSolo()">Play Solo (Test Mode)</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container hidden" id="gameContainer">
         <div class="left-panel">
             <h1>侍</h1>
             
             <div class="connection-panel">
-                <div class="status" id="status">Your ID: <span id="myId">Connecting...</span></div>
-                <input type="text" id="peerId" placeholder="Enter friend's ID">
-                <button onclick="connectToPeer()">Connect</button>
-                <button onclick="copyId()">Copy ID</button>
+                <div class="status" id="status">Waiting for connection...</div>
+                <div id="roomInfo" class="hidden">
+                    <div class="room-link" id="roomLink"></div>
+                    <button onclick="copyRoomLink()">📋 Copy Game Link</button>
+                </div>
             </div>
             
             <div id="gameBoard">
@@ -322,9 +373,9 @@
         </div>
         
         <div class="game-area" id="gameArea">
-            <div class="game-info" id="gameInfo" style="display: none;">
-                <div class="turn-indicator" id="turnIndicator">Your Turn</div>
-                <button onclick="endTurn()">End Turn</button>
+            <div class="game-info" id="gameInfo">
+                <div class="turn-indicator" id="turnIndicator">Player 1's Turn</div>
+                <button onclick="endTurn()" style="width: auto; padding: 8px 20px; margin: 0;">End Turn</button>
             </div>
             
             <div class="board-container" id="boardContainer">
@@ -343,25 +394,24 @@
     </div>
 
     <script>
-        // PeerJS variables
+        // Room and connection variables
+        let roomCode = null;
         let peer = null;
         let conn = null;
-        let myId = null;
         let isHost = false;
         let myPlayer = null;
-        let currentPlayer = 1;
         
         // Game state
         let gameState = {
             board: [],
             redDeck: [],
             yellowDeck: [],
-            tiles: [], // All tiles on board
-            tokens: [], // All tokens
+            tiles: [],
+            tokens: [],
             currentTurn: 1
         };
         
-        // Local state (not synced)
+        // Local state
         let myHandTiles = [];
         let draggedElement = null;
         let dragOffset = {x: 0, y: 0};
@@ -370,10 +420,8 @@
         
         // Board configuration
         const HEX_SIZE = 25;
-        const BOARD_WIDTH = 800;
-        const BOARD_HEIGHT = 600;
         
-        // Map layout (1 = land, 0 = water, 2 = pagoda)
+        // Map layout
         const MAP_LAYOUT = [
             [0,0,0,0,0,0,0,0,0,0,0,0,1,2,1,0,0,0,0],
             [0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0],
@@ -411,41 +459,132 @@
             {type: 'special', value: 3}
         ];
         
-        // Initialize PeerJS
-        function initPeer() {
-            peer = new Peer();
+        // Check URL for room code on load
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlRoom = urlParams.get('room');
             
-            peer.on('open', (id) => {
-                myId = id;
-                document.getElementById('myId').textContent = id;
-                document.getElementById('status').classList.add('connected');
+            if (urlRoom) {
+                document.getElementById('roomCodeInput').value = urlRoom;
+                joinRoom();
+            }
+        });
+        
+        // Create a new room
+        function createRoom() {
+            roomCode = generateRoomCode();
+            isHost = true;
+            myPlayer = 1;
+            
+            // Update URL
+            const url = new URL(window.location);
+            url.searchParams.set('room', roomCode);
+            window.history.pushState({}, '', url);
+            
+            initPeer(roomCode);
+            showGame();
+            
+            // Show room link
+            const roomLink = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+            document.getElementById('roomLink').textContent = roomLink;
+            document.getElementById('roomInfo').classList.remove('hidden');
+            document.getElementById('status').textContent = 'Waiting for opponent...';
+            document.getElementById('status').classList.add('waiting');
+        }
+        
+        // Join existing room
+        function joinRoom() {
+            const inputCode = document.getElementById('roomCodeInput').value.trim();
+            if (!inputCode) {
+                alert('Please enter a room code');
+                return;
+            }
+            
+            roomCode = inputCode;
+            myPlayer = 2;
+            
+            // Update URL
+            const url = new URL(window.location);
+            url.searchParams.set('room', roomCode);
+            window.history.pushState({}, '', url);
+            
+            initPeer();
+            showGame();
+            
+            // Try to connect to host
+            setTimeout(() => {
+                connectToHost();
+            }, 1000);
+        }
+        
+        // Play solo mode
+        function playSolo() {
+            isHost = true;
+            myPlayer = 1;
+            showGame();
+            initGame();
+            document.getElementById('status').textContent = 'Playing Solo Mode';
+            document.getElementById('status').classList.add('connected');
+        }
+        
+        // Generate room code
+        function generateRoomCode() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+        
+        // Show game screen
+        function showGame() {
+            document.getElementById('menuScreen').classList.add('hidden');
+            document.getElementById('gameContainer').classList.remove('hidden');
+        }
+        
+        // Initialize PeerJS
+        function initPeer(customId = null) {
+            const peerId = customId || 'samurai-' + Math.random().toString(36).substring(2, 9);
+            
+            peer = new Peer(peerId, {
+                debug: 2
             });
             
-            peer.on('connection', (connection) => {
-                if (!conn) {
-                    conn = connection;
-                    isHost = true;
-                    myPlayer = 1;
-                    setupConnection();
+            peer.on('open', (id) => {
+                console.log('Connected with ID:', id);
+                
+                if (isHost) {
+                    // Wait for connection
+                    peer.on('connection', (connection) => {
+                        conn = connection;
+                        setupConnection();
+                        document.getElementById('status').textContent = 'Opponent connected!';
+                        document.getElementById('status').classList.remove('waiting');
+                        document.getElementById('status').classList.add('connected');
+                    });
+                }
+            });
+            
+            peer.on('error', (err) => {
+                console.error('PeerJS Error:', err);
+                if (err.type === 'peer-unavailable') {
+                    document.getElementById('status').textContent = 'Room not found. Creating new game...';
+                    setTimeout(() => {
+                        createRoom();
+                    }, 2000);
                 }
             });
         }
         
-        function connectToPeer() {
-            const peerId = document.getElementById('peerId').value;
-            if (!peerId) return;
+        // Connect to host
+        function connectToHost() {
+            if (!peer) return;
             
-            conn = peer.connect(peerId);
-            myPlayer = 2;
+            conn = peer.connect(roomCode);
             setupConnection();
         }
         
+        // Setup connection
         function setupConnection() {
             conn.on('open', () => {
                 document.getElementById('status').textContent = 'Connected!';
                 document.getElementById('status').classList.add('connected');
-                document.getElementById('gameBoard').style.display = 'flex';
-                document.getElementById('gameInfo').style.display = 'flex';
                 
                 if (isHost) {
                     initGame();
@@ -456,8 +595,14 @@
             conn.on('data', (data) => {
                 handleMessage(data);
             });
+            
+            conn.on('close', () => {
+                document.getElementById('status').textContent = 'Opponent disconnected';
+                document.getElementById('status').classList.remove('connected');
+            });
         }
         
+        // Initialize game
         function initGame() {
             // Initialize board
             gameState.board = [];
@@ -477,7 +622,6 @@
             shuffleArray(gameState.redDeck);
             shuffleArray(gameState.yellowDeck);
             
-            // Initialize tiles and tokens as empty arrays
             gameState.tiles = [];
             gameState.tokens = [];
             
@@ -498,12 +642,10 @@
             const svg = document.getElementById('board');
             svg.innerHTML = '';
             
-            // Draw hexagons
             gameState.board.forEach((hex, i) => {
                 const x = hex.col * HEX_SIZE * 1.5 + 50;
                 const y = hex.row * HEX_SIZE * 1.732 + (hex.col % 2) * HEX_SIZE * 0.866 + 50;
                 
-                // Draw hex
                 const hexPath = createHexagon(x, y, HEX_SIZE);
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 path.setAttribute('d', hexPath);
@@ -511,10 +653,8 @@
                 path.setAttribute('stroke', '#2c3e50');
                 path.setAttribute('stroke-width', '1');
                 path.setAttribute('class', 'hex');
-                path.setAttribute('data-index', i);
                 svg.appendChild(path);
                 
-                // Draw water pattern
                 if (hex.type === 0) {
                     const wave = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                     wave.setAttribute('x', x);
@@ -527,7 +667,6 @@
                     svg.appendChild(wave);
                 }
                 
-                // Draw pagoda
                 if (hex.type === 2) {
                     const pagoda = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                     pagoda.setAttribute('x', x);
@@ -554,11 +693,9 @@
         }
         
         function createDeckTiles() {
-            // Create visual tiles for each deck
             const redDeck = document.getElementById('redDeck');
             const yellowDeck = document.getElementById('yellowDeck');
             
-            // Stack red tiles
             gameState.redDeck.forEach((tile, index) => {
                 const tileEl = createTileElement(tile, true);
                 tileEl.style.left = (redDeck.offsetLeft + index * 0.5) + 'px';
@@ -567,7 +704,6 @@
                 document.getElementById('deckArea').appendChild(tileEl);
             });
             
-            // Stack yellow tiles
             gameState.yellowDeck.forEach((tile, index) => {
                 const tileEl = createTileElement(tile, true);
                 tileEl.style.left = (yellowDeck.offsetLeft + index * 0.5) + 'px';
@@ -592,203 +728,6 @@
             
             if (faceDown) {
                 path.setAttribute('fill', tile.color === 'red' ? '#c0392b' : '#d68910');
-                // Remove text if exists
-                const text = svg.querySelector('text');
-                if (text) text.remove();
-            } else {
-                path.setAttribute('fill', tile.color === 'red' ? '#e74c3c' : '#f1c40f');
-                // Add text if not exists
-                let text = svg.querySelector('text');
-                if (!text) {
-                    text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                    text.setAttribute('x', '30');
-                    text.setAttribute('y', '32');
-                    text.setAttribute('text-anchor', 'middle');
-                    text.setAttribute('fill', 'white');
-                    text.setAttribute('font-size', '14');
-                    text.setAttribute('font-weight', 'bold');
-                    svg.appendChild(text);
-                }
-                text.textContent = tile.type.charAt(0).toUpperCase() + tile.value;
-            }
-        }
-        
-        function updateStackOrder(x, y) {
-            // Find all tiles at this position and update z-index for stacking
-            const tiles = document.querySelectorAll('.draggable-tile');
-            const nearbyTiles = [];
-            
-            tiles.forEach(tile => {
-                const rect = tile.getBoundingClientRect();
-                const tileCenterX = rect.left + rect.width / 2;
-                const tileCenterY = rect.top + rect.height / 2;
-                
-                const distance = Math.sqrt(Math.pow(x - tileCenterX, 2) + Math.pow(y - tileCenterY, 2));
-                if (distance < 30) {
-                    nearbyTiles.push(tile);
-                }
-            });
-            
-            // Update z-index for stacking
-            nearbyTiles.forEach((tile, index) => {
-                tile.style.zIndex = 100 + index;
-            });
-        }
-        
-        function updateUI() {
-            document.getElementById('redCount').textContent = gameState.redDeck.length;
-            document.getElementById('yellowCount').textContent = gameState.yellowDeck.length;
-            
-            const redDeck = document.getElementById('redDeck');
-            const yellowDeck = document.getElementById('yellowDeck');
-            
-            if (gameState.redDeck.length === 0) redDeck.classList.add('empty');
-            if (gameState.yellowDeck.length === 0) yellowDeck.classList.add('empty');
-            
-            const turnText = gameState.currentTurn === myPlayer ? 'Your Turn' : "Opponent's Turn";
-            document.getElementById('turnIndicator').textContent = turnText;
-        }
-        
-        function endTurn() {
-            gameState.currentTurn = gameState.currentTurn === 1 ? 2 : 1;
-            updateUI();
-            syncGameState();
-        }
-        
-        function syncGameState() {
-            if (!conn || !conn.open) return;
-            
-            // Collect all tiles positions
-            const tiles = [];
-            document.querySelectorAll('.draggable-tile').forEach(tile => {
-                if (tile.parentElement.id === 'boardContainer') {
-                    tiles.push({
-                        id: tile.dataset.tileId,
-                        x: tile.style.left,
-                        y: tile.style.top,
-                        faceDown: tile.dataset.faceDown === 'true',
-                        zIndex: tile.style.zIndex
-                    });
-                }
-            });
-            
-            // Collect all tokens positions
-            const tokens = [];
-            document.querySelectorAll('.draggable-token').forEach(token => {
-                if (token.parentElement.id === 'boardContainer') {
-                    tokens.push({
-                        id: token.dataset.tokenId,
-                        type: token.dataset.tokenType,
-                        x: token.style.left,
-                        y: token.style.top
-                    });
-                }
-            });
-            
-            // Count hand tiles (don't send actual tiles, just count)
-            const handCount = document.querySelectorAll('#playerHand .draggable-tile').length;
-            
-            conn.send({
-                type: 'gameState',
-                data: {
-                    ...gameState,
-                    tiles: tiles,
-                    tokens: tokens,
-                    opponentHandCount: handCount
-                }
-            });
-        }
-        
-        function handleMessage(msg) {
-            switch (msg.type) {
-                case 'gameState':
-                    const newState = msg.data;
-                    gameState = {...gameState, ...newState};
-                    
-                    // Update board tiles
-                    updateBoardTiles(newState.tiles || []);
-                    
-                    // Update board tokens
-                    updateBoardTokens(newState.tokens || []);
-                    
-                    // Update opponent hand count
-                    document.getElementById('opponentCount').textContent = newState.opponentHandCount || 0;
-                    
-                    drawBoard();
-                    updateUI();
-                    break;
-            }
-        }
-        
-        function updateBoardTiles(tiles) {
-            // Remove existing board tiles (not in hand)
-            document.querySelectorAll('#boardContainer .draggable-tile').forEach(tile => {
-                tile.remove();
-            });
-            
-            // Add tiles from game state
-            tiles.forEach(tileData => {
-                let tile = gameState.redDeck.find(t => t.id === tileData.id) || 
-                          gameState.yellowDeck.find(t => t.id === tileData.id);
-                
-                if (tile) {
-                    const tileEl = createTileElement(tile, tileData.faceDown);
-                    tileEl.style.left = tileData.x;
-                    tileEl.style.top = tileData.y;
-                    tileEl.style.zIndex = tileData.zIndex;
-                    document.getElementById('boardContainer').appendChild(tileEl);
-                }
-            });
-        }
-        
-        function updateBoardTokens(tokens) {
-            // Remove existing board tokens
-            document.querySelectorAll('#boardContainer .draggable-token').forEach(token => {
-                token.remove();
-            });
-            
-            // Add tokens from game state
-            tokens.forEach(tokenData => {
-                const tokenEl = createTokenElement(tokenData.type, tokenData.id);
-                tokenEl.style.left = tokenData.x;
-                tokenEl.style.top = tokenData.y;
-                document.getElementById('boardContainer').appendChild(tokenEl);
-            });
-        }
-        
-        function copyId() {
-            navigator.clipboard.writeText(myId);
-            const btn = event.target;
-            btn.textContent = 'Copied!';
-            setTimeout(() => {
-                btn.textContent = 'Copy ID';
-            }, 2000);
-        }
-        
-        // Prevent right-click context menu globally
-        document.addEventListener('contextmenu', (e) => {
-            if (e.target.closest('.draggable-tile')) {
-                e.preventDefault();
-                return false;
-            }
-        });
-        
-        // Initialize on load with fallback
-        window.addEventListener('load', () => {
-            initPeer();
-            
-            // Add offline mode button for testing
-            const offlineBtn = document.createElement('button');
-            offlineBtn.textContent = 'Test Offline';
-            offlineBtn.onclick = () => {
-                document.getElementById('gameBoard').style.display = 'flex';
-                document.getElementById('gameInfo').style.display = 'flex';
-                myPlayer = 1;
-                isHost = true;
-                initGame();
-            };
-            document.querySelector('.connection-panel').appendChild(offlineBtn);
-        });392b' : '#d68910');
             } else {
                 path.setAttribute('fill', tile.color === 'red' ? '#e74c3c' : '#f1c40f');
             }
@@ -811,8 +750,6 @@
             }
             
             tileDiv.appendChild(svg);
-            
-            // Add drag handlers
             tileDiv.addEventListener('mousedown', startDragTile);
             tileDiv.addEventListener('contextmenu', flipTile);
             
@@ -824,17 +761,13 @@
             const triangleContainer = document.getElementById('triangleTokens');
             const circleContainer = document.getElementById('circleTokens');
             
-            // Create 7 of each token type
             for (let i = 0; i < 7; i++) {
-                // Square tokens
                 const square = createTokenElement('square', 's' + tokenIdCounter++);
                 squareContainer.appendChild(square);
                 
-                // Triangle tokens
                 const triangle = createTokenElement('triangle', 't' + tokenIdCounter++);
                 triangleContainer.appendChild(triangle);
                 
-                // Circle tokens
                 const circle = createTokenElement('circle', 'c' + tokenIdCounter++);
                 circleContainer.appendChild(circle);
             }
@@ -884,7 +817,7 @@
         }
         
         function startDragTile(e) {
-            if (e.button !== 0) return; // Only left click
+            if (e.button !== 0) return;
             e.preventDefault();
             
             const tile = e.currentTarget;
@@ -934,30 +867,25 @@
             const tile = draggedElement;
             tile.classList.remove('dragging');
             
-            // Check if dropped in player hand
             const handRect = document.getElementById('playerHand').getBoundingClientRect();
             if (e.clientX >= handRect.left && e.clientX <= handRect.right &&
                 e.clientY >= handRect.top && e.clientY <= handRect.bottom) {
                 
-                // Move to hand
                 if (tile.parentElement.id !== 'playerHand') {
                     document.getElementById('playerHand').appendChild(tile);
                     
-                    // Flip face up when added to hand
                     if (tile.dataset.faceDown === 'true') {
                         tile.dataset.faceDown = 'false';
                         updateTileVisual(tile);
                     }
                 }
             }
-            // Check if dropped on board
             else if (e.clientX >= document.getElementById('boardContainer').getBoundingClientRect().left) {
                 if (tile.parentElement.id !== 'boardContainer') {
                     document.getElementById('boardContainer').appendChild(tile);
                 }
             }
             
-            // Update z-index for stacking
             updateStackOrder(e.clientX, e.clientY);
             
             draggedElement = null;
@@ -973,7 +901,6 @@
             const token = draggedElement;
             token.classList.remove('dragging');
             
-            // Move to board if dropped there
             const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
             if (e.clientX >= boardRect.left && e.clientX <= boardRect.right &&
                 e.clientY >= boardRect.top && e.clientY <= boardRect.bottom) {
@@ -1005,7 +932,6 @@
             const tileId = tileEl.dataset.tileId;
             const faceDown = tileEl.dataset.faceDown === 'true';
             
-            // Find tile data
             let tile = gameState.redDeck.find(t => t.id === tileId) || 
                       gameState.yellowDeck.find(t => t.id === tileId) ||
                       gameState.tiles.find(t => t.id === tileId);
@@ -1016,4 +942,173 @@
             const path = svg.querySelector('path');
             
             if (faceDown) {
-                path.setAttribute('fill', tile.color === 'red' ? '#c0
+                path.setAttribute('fill', tile.color === 'red' ? '#c0392b' : '#d68910');
+                const text = svg.querySelector('text');
+                if (text) text.remove();
+            } else {
+                path.setAttribute('fill', tile.color === 'red' ? '#e74c3c' : '#f1c40f');
+                let text = svg.querySelector('text');
+                if (!text) {
+                    text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', '30');
+                    text.setAttribute('y', '32');
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('fill', 'white');
+                    text.setAttribute('font-size', '14');
+                    text.setAttribute('font-weight', 'bold');
+                    svg.appendChild(text);
+                }
+                text.textContent = tile.type.charAt(0).toUpperCase() + tile.value;
+            }
+        }
+        
+        function updateStackOrder(x, y) {
+            const tiles = document.querySelectorAll('.draggable-tile');
+            const nearbyTiles = [];
+            
+            tiles.forEach(tile => {
+                const rect = tile.getBoundingClientRect();
+                const tileCenterX = rect.left + rect.width / 2;
+                const tileCenterY = rect.top + rect.height / 2;
+                
+                const distance = Math.sqrt(Math.pow(x - tileCenterX, 2) + Math.pow(y - tileCenterY, 2));
+                if (distance < 30) {
+                    nearbyTiles.push(tile);
+                }
+            });
+            
+            nearbyTiles.forEach((tile, index) => {
+                tile.style.zIndex = 100 + index;
+            });
+        }
+        
+        function updateUI() {
+            document.getElementById('redCount').textContent = gameState.redDeck.length;
+            document.getElementById('yellowCount').textContent = gameState.yellowDeck.length;
+            
+            const redDeck = document.getElementById('redDeck');
+            const yellowDeck = document.getElementById('yellowDeck');
+            
+            if (gameState.redDeck.length === 0) redDeck.classList.add('empty');
+            if (gameState.yellowDeck.length === 0) yellowDeck.classList.add('empty');
+            
+            const turnText = `Player ${gameState.currentTurn}'s Turn`;
+            document.getElementById('turnIndicator').textContent = turnText;
+        }
+        
+        function endTurn() {
+            gameState.currentTurn = gameState.currentTurn === 1 ? 2 : 1;
+            updateUI();
+            syncGameState();
+        }
+        
+        function syncGameState() {
+            if (!conn || !conn.open) return;
+            
+            const tiles = [];
+            document.querySelectorAll('.draggable-tile').forEach(tile => {
+                if (tile.parentElement.id === 'boardContainer') {
+                    tiles.push({
+                        id: tile.dataset.tileId,
+                        x: tile.style.left,
+                        y: tile.style.top,
+                        faceDown: tile.dataset.faceDown === 'true',
+                        zIndex: tile.style.zIndex
+                    });
+                }
+            });
+            
+            const tokens = [];
+            document.querySelectorAll('.draggable-token').forEach(token => {
+                if (token.parentElement.id === 'boardContainer') {
+                    tokens.push({
+                        id: token.dataset.tokenId,
+                        type: token.dataset.tokenType,
+                        x: token.style.left,
+                        y: token.style.top
+                    });
+                }
+            });
+            
+            const handCount = document.querySelectorAll('#playerHand .draggable-tile').length;
+            
+            conn.send({
+                type: 'gameState',
+                data: {
+                    ...gameState,
+                    tiles: tiles,
+                    tokens: tokens,
+                    opponentHandCount: handCount
+                }
+            });
+        }
+        
+        function handleMessage(msg) {
+            switch (msg.type) {
+                case 'gameState':
+                    const newState = msg.data;
+                    gameState = {...gameState, ...newState};
+                    
+                    updateBoardTiles(newState.tiles || []);
+                    updateBoardTokens(newState.tokens || []);
+                    
+                    document.getElementById('opponentCount').textContent = newState.opponentHandCount || 0;
+                    
+                    drawBoard();
+                    updateUI();
+                    break;
+            }
+        }
+        
+        function updateBoardTiles(tiles) {
+            document.querySelectorAll('#boardContainer .draggable-tile').forEach(tile => {
+                tile.remove();
+            });
+            
+            tiles.forEach(tileData => {
+                let tile = gameState.redDeck.find(t => t.id === tileData.id) || 
+                          gameState.yellowDeck.find(t => t.id === tileData.id);
+                
+                if (tile) {
+                    const tileEl = createTileElement(tile, tileData.faceDown);
+                    tileEl.style.left = tileData.x;
+                    tileEl.style.top = tileData.y;
+                    tileEl.style.zIndex = tileData.zIndex;
+                    document.getElementById('boardContainer').appendChild(tileEl);
+                }
+            });
+        }
+        
+        function updateBoardTokens(tokens) {
+            document.querySelectorAll('#boardContainer .draggable-token').forEach(token => {
+                token.remove();
+            });
+            
+            tokens.forEach(tokenData => {
+                const tokenEl = createTokenElement(tokenData.type, tokenData.id);
+                tokenEl.style.left = tokenData.x;
+                tokenEl.style.top = tokenData.y;
+                document.getElementById('boardContainer').appendChild(tokenEl);
+            });
+        }
+        
+        function copyRoomLink() {
+            const roomLink = document.getElementById('roomLink').textContent;
+            navigator.clipboard.writeText(roomLink);
+            const btn = event.target;
+            btn.textContent = '✅ Copied!';
+            setTimeout(() => {
+                btn.textContent = '📋 Copy Game Link';
+            }, 2000);
+        }
+        
+        // Prevent right-click context menu on tiles
+        document.addEventListener('contextmenu', (e) => {
+            if (e.target.closest('.draggable-tile')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    </script>
+</body>
+</html>
