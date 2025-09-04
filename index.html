@@ -773,8 +773,22 @@
             }
         });
         
-        // Initialize
-        initPeer();392b' : '#d68910');
+        // Initialize on load with fallback
+        window.addEventListener('load', () => {
+            initPeer();
+            
+            // Add offline mode button for testing
+            const offlineBtn = document.createElement('button');
+            offlineBtn.textContent = 'Test Offline';
+            offlineBtn.onclick = () => {
+                document.getElementById('gameBoard').style.display = 'flex';
+                document.getElementById('gameInfo').style.display = 'flex';
+                myPlayer = 1;
+                isHost = true;
+                initGame();
+            };
+            document.querySelector('.connection-panel').appendChild(offlineBtn);
+        });392b' : '#d68910');
             } else {
                 path.setAttribute('fill', tile.color === 'red' ? '#e74c3c' : '#f1c40f');
             }
