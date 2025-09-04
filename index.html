@@ -432,7 +432,7 @@
             myHandTiles.push(drawnTile);
             
             // Add the new tile to the player's hand visually
-            const tileEl = createTileElement(drawnTile, true);
+            const tileEl = createTileElement(drawnTile, false);
             document.getElementById('playerHand').appendChild(tileEl);
             
             // Sync the game state to the opponent
