@@ -546,28 +546,7 @@
                 connectToHost();
             }, 1000);
         }
-        
-        // Play solo mode
-        function playSolo() {
-            isHost = true;
-            myPlayer = 1;
-            showGame();
-            initGame();
-            document.getElementById('status').textContent = 'Playing Solo Mode';
-            document.getElementById('status').classList.add('connected');
-        }
-        
-        // Generate room code
-        function generateRoomCode() {
-            return Math.random().toString(36).substring(2, 8).toUpperCase();
-        }
-        
-        // Show game screen
-        function showGame() {
-            document.getElementById('menuScreen').classList.add('hidden');
-            document.getElementById('gameContainer').classList.remove('hidden');
-        }
-        
+
         // Initialize PeerJS
         function initPeer(customId = null) {
             const peerId = customId || 'samurai-' + Math.random().toString(36).substring(2, 9);
@@ -580,13 +559,14 @@
                 console.log('Connected with ID:', id);
                 
                 if (isHost) {
-                    // Wait for connection
+                    initGame(); // Initialize the game as the host
                     peer.on('connection', (connection) => {
                         conn = connection;
                         setupConnection();
                         document.getElementById('status').textContent = 'Opponent connected!';
                         document.getElementById('status').classList.remove('waiting');
                         document.getElementById('status').classList.add('connected');
+                        syncGameState(); // Sync the initial state to the new player
                     });
                 }
             });
