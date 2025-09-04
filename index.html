@@ -379,7 +379,7 @@
             </div>
             
             <div class="board-container" id="boardContainer">
-                <svg id="board" viewBox="0 0 800 600">
+                <svg id="board" viewBox="0 0 900 600">
                     <!-- Board will be generated here -->
                 </svg>
                 
@@ -696,19 +696,26 @@
             const redDeck = document.getElementById('redDeck');
             const yellowDeck = document.getElementById('yellowDeck');
             
+            // Clear any existing deck tiles
+            document.querySelectorAll('#deckArea .draggable-tile').forEach(t => t.remove());
+            
+            // Stack red tiles
             gameState.redDeck.forEach((tile, index) => {
                 const tileEl = createTileElement(tile, true);
                 tileEl.style.left = (redDeck.offsetLeft + index * 0.5) + 'px';
                 tileEl.style.top = (redDeck.offsetTop + index * 0.5) + 'px';
                 tileEl.style.zIndex = index;
+                tileEl.dataset.deckColor = 'red';
                 document.getElementById('deckArea').appendChild(tileEl);
             });
             
+            // Stack yellow tiles
             gameState.yellowDeck.forEach((tile, index) => {
                 const tileEl = createTileElement(tile, true);
-                tileEl.style.left = (yellowDeck.offsetLeft + index * 0.5) + 'px';
+                tileEl.style.left = (yellowDeck.offsetLeft + 100 + index * 0.5) + 'px';
                 tileEl.style.top = (yellowDeck.offsetTop + index * 0.5) + 'px';
                 tileEl.style.zIndex = index;
+                tileEl.dataset.deckColor = 'yellow';
                 document.getElementById('deckArea').appendChild(tileEl);
             });
         }
@@ -958,7 +965,11 @@
                     text.setAttribute('font-weight', 'bold');
                     svg.appendChild(text);
                 }
-                text.textContent = tile.type.charAt(0).toUpperCase() + tile.value;
+                // S=Samurai, H=Helmet, B=Buddha, Ship=Ship, E=Exchange, M=Move, Sp=Special
+                let symbol = tile.type.charAt(0).toUpperCase();
+                if (tile.type === 'ship') symbol = 'Ship';
+                if (tile.type === 'special') symbol = 'Sp';
+                text.textContent = symbol + tile.value;
             }
         }
         
