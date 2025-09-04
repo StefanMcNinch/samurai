@@ -640,7 +640,7 @@
             }
         }
         
-        function drawBoard() {
+       function drawBoard() {
             const svg = document.getElementById('board');
             svg.innerHTML = '';
             
@@ -669,6 +669,7 @@
                     svg.appendChild(wave);
                 }
                 
+                // New logic for pagodas
                 let pagodaCount = 0;
                 if (hex.type === 2) {
                     pagodaCount = 1;
@@ -681,7 +682,7 @@
                 if (pagodaCount > 0) {
                     for (let p = 0; p < pagodaCount; p++) {
                         const pagoda = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                        pagoda.setAttribute('x', x - (pagodaCount - 1) * 10 + p * 20);
+                        pagoda.setAttribute('x', x - (pagodaCount - 1) * 10 + p * 20); // Spacing them out
                         pagoda.setAttribute('y', y + 5);
                         pagoda.setAttribute('text-anchor', 'middle');
                         pagoda.setAttribute('fill', '#c0392b');
@@ -974,7 +975,7 @@
                     text.setAttribute('y', '32');
                     text.setAttribute('text-anchor', 'middle');
                     text.setAttribute('fill', 'white');
-                    text.setAttribute('font-size', '14');
+                    text.setAttribute('font-size', '11');
                     text.setAttribute('font-weight', 'bold');
                     svg.appendChild(text);
                 }
