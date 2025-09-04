@@ -627,7 +627,7 @@
             gameState.tiles = [];
             gameState.tokens = [];
             
-            drawBoard();
+            ard();
             createDeckTiles();
             createTokens();
             updateUI();
@@ -641,63 +641,57 @@
         }
         
         function drawBoard() {
-    const svg = document.getElementById('board');
-    svg.innerHTML = '';
-    
-    // Rotate the map layout array
-    const rotatedLayout = [];
-    const numRows = MAP_LAYOUT.length;
-    const numCols = MAP_LAYOUT[0].length;
-    for (let col = 0; col < numCols; col++) {
-        rotatedLayout[col] = [];
-        for (let row = 0; row < numRows; row++) {
-            rotatedLayout[col][row] = MAP_LAYOUT[row][col];
-        }
-    }
-    
-    rotatedLayout.forEach((row, i) => {
-        row.forEach((hexType, j) => {
-            if (hexType === 0) return; // Don't draw water tiles
-
-            // Offset the rows for a tighter fit
-            const offset = (i % 2) * HEX_SIZE * 0.866; 
-            const x = i * HEX_SIZE * 1.5 + 50;
-            const y = j * HEX_SIZE * 1.732 + offset + 50;
+            const svg = document.getElementById('board');
+            svg.innerHTML = '';
             
-            const hexPath = createHexagon(x, y, HEX_SIZE);
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', hexPath);
-            path.setAttribute('fill', hexType === 0 ? '#5dade2' : '#f4d03f');
-            path.setAttribute('stroke', '#2c3e50');
-            path.setAttribute('stroke-width', '1');
-            path.setAttribute('class', 'hex');
-            svg.appendChild(path);
-            
-            // Draw symbols
-            let pagodaCount = 0;
-            if (hexType === 2) {
-                pagodaCount = 1;
-            } else if (hexType === 4) {
-                pagodaCount = 2;
-            } else if (hexType === 5) {
-                pagodaCount = 3;
-            }
-            
-            if (pagodaCount > 0) {
-                for (let p = 0; p < pagodaCount; p++) {
-                    const pagoda = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                    pagoda.setAttribute('x', x - (pagodaCount - 1) * 10 + p * 20);
-                    pagoda.setAttribute('y', y + 5);
-                    pagoda.setAttribute('text-anchor', 'middle');
-                    pagoda.setAttribute('fill', '#c0392b');
-                    pagoda.setAttribute('font-size', '24');
-                    pagoda.textContent = '⛩';
-                    svg.appendChild(pagoda);
+            gameState.board.forEach((hex, i) => {
+                const x = hex.col * HEX_SIZE * 1.5 + 50;
+                const y = hex.row * HEX_SIZE * 1.732 + (hex.col % 2) * HEX_SIZE * 0.866 + 50;
+                
+                const hexPath = createHexagon(x, y, HEX_SIZE);
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', hexPath);
+                path.setAttribute('fill', hex.type === 0 ? '#5dade2' : '#f4d03f');
+                path.setAttribute('stroke', '#2c3e50');
+                path.setAttribute('stroke-width', '1');
+                path.setAttribute('class', 'hex');
+                svg.appendChild(path);
+                
+                if (hex.type === 0) {
+                    const wave = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    wave.setAttribute('x', x);
+                    wave.setAttribute('y', y);
+                    wave.setAttribute('text-anchor', 'middle');
+                    wave.setAttribute('fill', '#3498db');
+                    wave.setAttribute('font-size', '20');
+                    wave.setAttribute('opacity', '0.3');
+                    wave.textContent = '〜';
+                    svg.appendChild(wave);
                 }
-            }
-        });
-    });
-}
+                
+                let pagodaCount = 0;
+                if (hex.type === 2) {
+                    pagodaCount = 1;
+                } else if (hex.type === 4) {
+                    pagodaCount = 2;
+                } else if (hex.type === 5) {
+                    pagodaCount = 3;
+                }
+                
+                if (pagodaCount > 0) {
+                    for (let p = 0; p < pagodaCount; p++) {
+                        const pagoda = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        pagoda.setAttribute('x', x - (pagodaCount - 1) * 10 + p * 20);
+                        pagoda.setAttribute('y', y + 5);
+                        pagoda.setAttribute('text-anchor', 'middle');
+                        pagoda.setAttribute('fill', '#c0392b');
+                        pagoda.setAttribute('font-size', '24');
+                        pagoda.textContent = '⛩';
+                        svg.appendChild(pagoda);
+                    }
+                }
+            });
+        }
         
         function createHexagon(x, y, size) {
             const points = [];
