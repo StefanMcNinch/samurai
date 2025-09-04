@@ -627,7 +627,7 @@
             gameState.tiles = [];
             gameState.tokens = [];
             
-            ard();
+            drawBoard();
             createDeckTiles();
             createTokens();
             updateUI();
@@ -640,7 +640,7 @@
             }
         }
         
-       function drawBoard() {
+        function drawBoard() {
             const svg = document.getElementById('board');
             svg.innerHTML = '';
             
@@ -975,7 +975,7 @@
                     text.setAttribute('y', '32');
                     text.setAttribute('text-anchor', 'middle');
                     text.setAttribute('fill', 'white');
-                    text.setAttribute('font-size', '11');
+                    text.setAttribute('font-size', '14');
                     text.setAttribute('font-weight', 'bold');
                     svg.appendChild(text);
                 }
