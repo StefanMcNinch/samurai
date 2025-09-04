@@ -394,7 +394,7 @@
         </div>
     </div>
 
-    <script>
+   <script>
         const HEX_SIZE = 45;
 
         // Networking
@@ -474,6 +474,9 @@
             roomCode = generateRoomCode();
             isHost = true;
             myPlayer = 1;
+
+            // This is the key fix: Initialize the game state immediately
+            initGame();
             
             // Update URL
             const url = new URL(window.location);
@@ -523,8 +526,6 @@
                 console.log('Connected with ID:', id);
                 
                 if (isHost) {
-                    // Initialize the game state after a successful connection for the host
-                    initGame();
                     peer.on('connection', (connection) => {
                         conn = connection;
                         setupConnection();
