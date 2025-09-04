@@ -1058,29 +1058,22 @@
         function syncGameState() {
             if (!conn || !conn.open) return;
             
-            const tiles = [];
-            document.querySelectorAll('.draggable-tile').forEach(tile => {
-                if (tile.parentElement.id === 'boardContainer') {
-                    tiles.push({
-                        id: tile.dataset.tileId,
-                        x: tile.style.left,
-                        y: tile.style.top,
-                        faceDown: tile.dataset.faceDown === 'true',
-                        zIndex: tile.style.zIndex
-                    });
-                }
-            });
-            
-            const tokens = [];
-            document.querySelectorAll('.draggable-token').forEach(token => {
-                if (token.parentElement.id === 'boardContainer') {
-                    tokens.push({
-                        id: token.dataset.tokenId,
-                        type: token.dataset.tokenType,
-                        x: token.style.left,
-                        y: token.style.top
-                    });
-                }
+            // Get all tiles currently on the board
+            const boardTiles = [];
+            document.querySelectorAll('#boardContainer .draggable-tile').forEach(tileEl => {
+                const rect = tileEl.getBoundingClientRect();
+                const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
+                
+                // Calculate position relative to the board container
+                const x = rect.left - boardRect.left;
+                const y = rect.top - boardRect.top;
+                
+                boardTiles.push({
+                    id: tileEl.dataset.tileId,
+                    x: x + 'px',
+                    y: y + 'px',
+                    faceDown: tileEl.dataset.faceDown === 'true'
+                });
             });
             
             const handCount = document.querySelectorAll('#playerHand .draggable-tile').length;
@@ -1089,8 +1082,7 @@
                 type: 'gameState',
                 data: {
                     ...gameState,
-                    tiles: tiles,
-                    tokens: tokens,
+                    tiles: boardTiles,
                     opponentHandCount: handCount
                 }
             });
