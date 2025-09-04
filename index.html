@@ -348,19 +348,19 @@
             
             <div id="gameBoard">
                 <div class="deck-area" id="deckArea">
-                    <div class="deck">
-                        <div class="deck-pile red-deck" id="redDeck">
-                            <span id="redCount">20</span>
-                        </div>
-                        <div class="deck-label">Red Deck</div>
-                    </div>
-                    <div class="deck">
-                        <div class="deck-pile yellow-deck" id="yellowDeck">
-                            <span id="yellowCount">20</span>
-                        </div>
-                        <div class="deck-label">Yellow Deck</div>
-                    </div>
-                </div>
+    <div class="deck">
+        <div class="deck-pile red-deck" id="redDeck" onclick="drawFromDeck('red')">
+            <span id="redCount">20</span>
+        </div>
+        <div class="deck-label">Red Deck</div>
+    </div>
+    <div class="deck">
+        <div class="deck-pile yellow-deck" id="yellowDeck" onclick="drawFromDeck('yellow')">
+            <span id="yellowCount">20</span>
+        </div>
+        <div class="deck-label">Yellow Deck</div>
+    </div>
+</div>
                 
                 <div class="player-hand" id="playerHand">
                     <div class="hand-title">Your Hand (Hidden from Opponent)</div>
@@ -410,7 +410,34 @@
             tokens: [],
             currentTurn: 1
         };
-        
+
+        function drawFromDeck(deckColor) {
+            // Check if it's the current player's turn
+            if (myPlayer !== gameState.currentTurn) {
+                alert("It is not your turn to draw a tile.");
+                return;
+            }
+
+            let deck;
+            if (deckColor === 'red' && gameState.redDeck.length > 0) {
+                deck = gameState.redDeck;
+            } else if (deckColor === 'yellow' && gameState.yellowDeck.length > 0) {
+                deck = gameState.yellowDeck;
+            } else {
+                return; // Deck is empty or invalid
+            }
+
+            const drawnTile = deck.pop();
+            myHandTiles.push(drawnTile);
+            
+            // Add the new tile to the player's hand visually
+            const tileEl = createTileElement(drawnTile, true);
+            document.getElementById('playerHand').appendChild(tileEl);
+            
+            // Sync the game state to the opponent
+            syncGameState();
+            
+        }
         // Local state
         let myHandTiles = [];
         let draggedElement = null;
@@ -439,26 +466,26 @@
         
         // Tile types
         const TILE_TYPES = [
-            {type: 'samurai', value: 1},
-            {type: 'samurai', value: 1},
-            {type: 'samurai', value: 2},
-            {type: 'samurai', value: 2},
-            {type: 'samurai', value: 3},
-            {type: 'Square', value: 2},
-            {type: 'Square', value: 3},
-            {type: 'Square', value: 4},
+            {type: 'Any', value: 1},
+            {type: 'Any', value: 1},
+            {type: 'Any', value: 2},
+            {type: 'Any', value: 2},
+            {type: 'Any', value: 3},
+            {type: 'Sqre', value: 2},
+            {type: 'Sqre', value: 3},
+            {type: 'Sqre', value: 4},
             {type: 'ship', value: 1},
             {type: 'ship', value: 2},
             {type: 'ship', value: 3},
-            {type: 'Ronin', value: 1},
-            {type: 'Circle', value: 2},
-            {type: 'Circle', value: 3},
-            {type: 'Circle', value: 4},
-            {type: 'Switch', value: 0},
+            {type: 'Fast', value: 1},
+            {type: 'Crcl', value: 2},
+            {type: 'Crcl', value: 3},
+            {type: 'Crcl', value: 4},
+            {type: 'Swch', value: 0},
             {type: 'Move', value: 0},
-            {type: 'Triangle', value: 2},
-            {type: 'Triangle', value: 3},
-            {type: 'Triangle', value: 4}
+            {type: 'Tri', value: 2},
+            {type: 'Tri', value: 3},
+            {type: 'Tri', value: 4}
         ];
         
         // Check URL for room code on load
@@ -975,7 +1002,7 @@
                     text.setAttribute('y', '32');
                     text.setAttribute('text-anchor', 'middle');
                     text.setAttribute('fill', 'white');
-                    text.setAttribute('font-size', '10');
+                    text.setAttribute('font-size', '12');
                     text.setAttribute('font-weight', 'bold');
                     svg.appendChild(text);
                 }
