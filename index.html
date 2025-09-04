@@ -394,7 +394,7 @@
         </div>
     </div>
 
-    <script>
+   <script>
         const HEX_SIZE = 45;
 
         // Networking
@@ -489,9 +489,6 @@
             document.getElementById('roomInfo').classList.remove('hidden');
             document.getElementById('status').textContent = 'Waiting for opponent...';
             document.getElementById('status').classList.add('waiting');
-
-            // Initialize the game state immediately for the host
-            initGame();
         }
         
         // Join existing room
@@ -526,6 +523,8 @@
                 console.log('Connected with ID:', id);
                 
                 if (isHost) {
+                    // Initialize the game state after a successful connection for the host
+                    initGame();
                     peer.on('connection', (connection) => {
                         conn = connection;
                         setupConnection();
@@ -604,7 +603,6 @@
             svg.innerHTML = '';
             
             gameState.board.forEach((hex, i) => {
-                // Correct calculations for point-up hexes
                 const x = hex.col * HEX_SIZE * 1.732 + (hex.row % 2) * HEX_SIZE * 0.866 + 50;
                 const y = hex.row * HEX_SIZE * 1.5 + 50;
                 
@@ -891,7 +889,6 @@
             
             document.getElementById('turnIndicator').textContent = `Player ${gameState.currentTurn}'s Turn`;
             
-            // Show / hide End Turn button
             const endTurnBtn = document.getElementById('endTurnBtn');
             if (myPlayer === gameState.currentTurn) {
                 endTurnBtn.classList.remove('hidden');
