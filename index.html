@@ -141,6 +141,8 @@
             height: 52px;
             cursor: move;
             z-index: 100;
+            background: transparent;
+            border: none;
         }
         
         .draggable-tile.dragging {
@@ -951,11 +953,26 @@
             token.classList.remove('dragging');
             
             const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
+            const tokenStorage = document.getElementById('tokenStorage').getBoundingClientRect();
+            
+            // Check if dropped on board (but not in token storage area)
             if (e.clientX >= boardRect.left && e.clientX <= boardRect.right &&
-                e.clientY >= boardRect.top && e.clientY <= boardRect.bottom) {
+                e.clientY >= boardRect.top && e.clientY <= boardRect.bottom &&
+                !(e.clientX >= tokenStorage.left && e.clientX <= tokenStorage.right &&
+                  e.clientY >= tokenStorage.top && e.clientY <= tokenStorage.bottom)) {
                 
-                if (token.parentElement.id !== 'boardContainer') {
-                    document.getElementById('boardContainer').appendChild(token);
+                // Always append to boardContainer for tokens dropped on board
+                document.getElementById('boardContainer').appendChild(token);
+            } else if (e.clientX >= tokenStorage.left && e.clientX <= tokenStorage.right &&
+                       e.clientY >= tokenStorage.top && e.clientY <= tokenStorage.bottom) {
+                // Return to original storage container if dropped back in storage
+                const tokenType = token.dataset.tokenType;
+                if (tokenType === 'square') {
+                    document.getElementById('squareTokens').appendChild(token);
+                } else if (tokenType === 'triangle') {
+                    document.getElementById('triangleTokens').appendChild(token);
+                } else if (tokenType === 'circle') {
+                    document.getElementById('circleTokens').appendChild(token);
                 }
             }
             
