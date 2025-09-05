@@ -1122,7 +1122,15 @@
             
             tiles.forEach(tileData => {
                 let tile = gameState.redDeck.find(t => t.id === tileData.id) || 
-                          gameState.yellowDeck.find(t => t.id === tileData.id);
+                          gameState.yellowDeck.find(t => t.id === tileData.id) ||
+                          [...TILE_TYPES].find((t, i) => 'r' + i === tileData.id || 'y' + i === tileData.id);
+                
+                if (!tile) {
+                    // Create tile from ID if not found
+                    const color = tileData.id.startsWith('r') ? 'red' : 'yellow';
+                    const index = parseInt(tileData.id.substring(1));
+                    tile = {...TILE_TYPES[index], id: tileData.id, color: color};
+                }
                 
                 if (tile) {
                     const tileEl = createTileElement(tile, tileData.faceDown);
