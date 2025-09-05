@@ -154,6 +154,7 @@
             width: 100%;
             height: 100%;
             filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+            background: transparent;
         }
         
         .draggable-token {
@@ -478,8 +479,8 @@
             {type: 'Sqre', value: 3},
             {type: 'Sqre', value: 4},
             {type: 'ship', value: 1},
+            {type: 'ship', value: 1},
             {type: 'ship', value: 2},
-            {type: 'ship', value: 3},
             {type: 'Fast', value: 1},
             {type: 'Crcl', value: 2},
             {type: 'Crcl', value: 3},
@@ -1027,7 +1028,13 @@
                 // S=Samurai, H=Helmet, B=Buddha, Ship=Ship, E=Exchange, M=Move, Sp=Special
                 let symbol = tile.type.charAt(0).toUpperCase();
                 if (tile.type === 'ship') symbol = 'Ship';
-                if (tile.type === 'special') symbol = 'Sp';
+                 if (tile.type === 'Any') symbol = 'Any';
+                 if (tile.type === 'Crcl') symbol = 'Crcl';
+                 if (tile.type === 'Sqre') symbol = 'Sqre';
+                 if (tile.type === 'Tri') symbol = 'Tri';
+                 if (tile.type === 'Fast') symbol = 'Fast';
+                 if (tile.type === 'Move') symbol = 'Move';
+                 if (tile.type === 'Swch') symbol = 'Swch';
                 text.textContent = symbol + tile.value;
             }
         }
