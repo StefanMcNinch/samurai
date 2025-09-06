@@ -457,7 +457,7 @@
         let tokenIdCounter = 0;
         
         // Board configuration
-        const HEX_SIZE = 25;
+       const HEX_SIZE = 27.5;
         
         // Map layout
         const MAP_LAYOUT = [
@@ -805,7 +805,16 @@
                 text.setAttribute('fill', 'white');
                 text.setAttribute('font-size', '14');
                 text.setAttribute('font-weight', 'bold');
-                text.textContent = tile.type.charAt(0).toUpperCase() + tile.value;
+                let symbol = tile.type.charAt(0).toUpperCase();
+if (tile.type === 'ship') symbol = 'Ship';
+if (tile.type === 'Any') symbol = 'Any';
+if (tile.type === 'Crcl') symbol = 'Crcl';
+if (tile.type === 'Sqre') symbol = 'Sqre';
+if (tile.type === 'Tri') symbol = 'Tri';
+if (tile.type === 'Fast') symbol = 'Fast';
+if (tile.type === 'Move') symbol = 'Move';
+if (tile.type === 'Swch') symbol = 'Swch';
+text.textContent = symbol + tile.value;
                 svg.appendChild(text);
             }
             
