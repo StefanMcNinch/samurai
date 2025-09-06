@@ -455,14 +455,14 @@
         // Map layout
         const MAP_LAYOUT = [
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0],
             [0,0,0,0,0,0,0,0,0,0,0,0,0,4,1,2,0],
-             [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0],
+             [0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0],
             [0,0,0,0,0,0,0,0,0,1,2,1,2,1,2,0,0],
-            [0,0,0,1,2,1,1,2,0,2,1,1,1,1,0,0,0,0],
+            [0,0,1,2,1,1,2,0,2,1,1,1,1,0,0,0],
              [0,0,2,1,1,2,1,1,1,1,1,5,1,2,0,0,0],
-            [0,0,0,0,0,0,0,1,4,1,2,1,1,1,0,0,0],
+            [0,0,0,0,0,0,1,4,1,2,1,1,1,0,0,0],
             [0,0,0,0,0,0,2,1,0,0,0,0,2,0,0,0,0],
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
             
@@ -479,8 +479,8 @@
             {type: 'Sqre', value: 3},
             {type: 'Sqre', value: 4},
             {type: 'ship', value: 1},
-            {type: 'ship', value: 1},
             {type: 'ship', value: 2},
+            {type: 'ship', value: 3},
             {type: 'Fast', value: 1},
             {type: 'Crcl', value: 2},
             {type: 'Crcl', value: 3},
@@ -676,8 +676,9 @@
             svg.innerHTML = '';
             
             gameState.board.forEach((hex, i) => {
-               const x = hex.col * HEX_SIZE * 1.732 + (hex.row % 2) * HEX_SIZE * 0.866 + 50;
-const y = hex.row * HEX_SIZE * 1.5 + 50;
+                // Point-up hex grid positioning
+                const x = hex.col * HEX_SIZE * 1.732 + (hex.row % 2) * HEX_SIZE * 0.866 + 50;
+                const y = hex.row * HEX_SIZE * 1.5 + 50;
                 
                 const hexPath = createHexagon(x, y, HEX_SIZE);
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -727,7 +728,7 @@ const y = hex.row * HEX_SIZE * 1.5 + 50;
         function createHexagon(x, y, size) {
             const points = [];
             for (let i = 0; i < 6; i++) {
-                // Correct calculation for point-up hexes
+                // Point-up hexagon (rotated 30 degrees)
                 const angle = (Math.PI / 3) * i + Math.PI / 6;
                 points.push([
                     x + size * Math.cos(angle),
@@ -1028,13 +1029,7 @@ const y = hex.row * HEX_SIZE * 1.5 + 50;
                 // S=Samurai, H=Helmet, B=Buddha, Ship=Ship, E=Exchange, M=Move, Sp=Special
                 let symbol = tile.type.charAt(0).toUpperCase();
                 if (tile.type === 'ship') symbol = 'Ship';
-                 if (tile.type === 'Any') symbol = 'Any';
-                 if (tile.type === 'Crcl') symbol = 'Crcl';
-                 if (tile.type === 'Sqre') symbol = 'Sqre';
-                 if (tile.type === 'Tri') symbol = 'Tri';
-                 if (tile.type === 'Fast') symbol = 'Fast';
-                 if (tile.type === 'Move') symbol = 'Move';
-                 if (tile.type === 'Swch') symbol = 'Swch';
+                if (tile.type === 'special') symbol = 'Sp';
                 text.textContent = symbol + tile.value;
             }
         }
@@ -1170,10 +1165,13 @@ const y = hex.row * HEX_SIZE * 1.5 + 50;
                 token.remove();
             });
             
+            const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
+            
             tokens.forEach(tokenData => {
                 const tokenEl = createTokenElement(tokenData.type, tokenData.id);
-                tokenEl.style.left = tokenData.x;
-                tokenEl.style.top = tokenData.y;
+                // Convert percentages back to pixels based on current board size
+                tokenEl.style.left = (tokenData.xPercent * boardRect.width / 100) + 'px';
+                tokenEl.style.top = (tokenData.yPercent * boardRect.height / 100) + 'px';
                 document.getElementById('boardContainer').appendChild(tokenEl);
             });
         }
