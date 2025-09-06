@@ -122,6 +122,8 @@
             position: relative;
             width: 100%;
             height: 100%;
+            max-width: 900px;
+            margin: 0 auto;
         }
         
         svg {
@@ -129,6 +131,9 @@
             height: 100%;
             background: #f0f0f0;
             border-radius: 10px;
+            max-width: 900px;
+            display: block;
+            margin: 0 auto;
         }
         
         .hex {
@@ -163,6 +168,8 @@
             height: 24px;
             cursor: move;
             z-index: 50;
+            background: transparent;
+            border: none;
         }
         
         .draggable-token.dragging {
@@ -478,9 +485,9 @@
             {type: 'Sqre', value: 2},
             {type: 'Sqre', value: 3},
             {type: 'Sqre', value: 4},
-            {type: '', value: 1},
-            {type: '', value: 2},
-            {type: '', value: 3},
+            {type: 'ship', value: 1},
+            {type: 'ship', value: 1},
+            {type: 'ship', value: 2},
             {type: 'Fast', value: 1},
             {type: 'Crcl', value: 2},
             {type: 'Crcl', value: 3},
@@ -993,6 +1000,8 @@
             tile.dataset.faceDown = !faceDown;
             updateTileVisual(tile);
             
+            syncGameState(); // Add sync after flip
+            
             return false;
         }
         
@@ -1083,15 +1092,28 @@
         function syncGameState() {
             if (!conn || !conn.open) return;
             
+            const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
             const tiles = [];
             document.querySelectorAll('.draggable-tile').forEach(tile => {
                 if (tile.parentElement.id === 'boardContainer') {
+                    const tileId = tile.dataset.tileId;
+                    // Find tile data from decks or create it
+                    let tileData = gameState.redDeck.find(t => t.id === tileId) || 
+                                  gameState.yellowDeck.find(t => t.id === tileId);
+                    if (!tileData) {
+                        const color = tileId.startsWith('r') ? 'red' : 'yellow';
+                        const index = parseInt(tileId.substring(1));
+                        tileData = {...TILE_TYPES[index], id: tileId, color: color};
+                    }
+                    
+                    // Store as percentage of board size
                     tiles.push({
-                        id: tile.dataset.tileId,
-                        x: tile.style.left,
-                        y: tile.style.top,
+                        id: tileId,
+                        xPercent: (parseFloat(tile.style.left) / boardRect.width) * 100,
+                        yPercent: (parseFloat(tile.style.top) / boardRect.height) * 100,
                         faceDown: tile.dataset.faceDown === 'true',
-                        zIndex: tile.style.zIndex
+                        zIndex: tile.style.zIndex,
+                        tileData: tileData
                     });
                 }
             });
@@ -1099,11 +1121,12 @@
             const tokens = [];
             document.querySelectorAll('.draggable-token').forEach(token => {
                 if (token.parentElement.id === 'boardContainer') {
+                    // Store as percentage of board size
                     tokens.push({
                         id: token.dataset.tokenId,
                         type: token.dataset.tokenType,
-                        x: token.style.left,
-                        y: token.style.top
+                        xPercent: (parseFloat(token.style.left) / boardRect.width) * 100,
+                        yPercent: (parseFloat(token.style.top) / boardRect.height) * 100
                     });
                 }
             });
@@ -1145,6 +1168,8 @@
                 tile.remove();
             });
             
+            const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
+            
             tiles.forEach(tileData => {
                 // Use included tile data or recreate it
                 let tile = tileData.tileData;
@@ -1159,8 +1184,9 @@
                 }
                 
                 const tileEl = createTileElement(tile, tileData.faceDown);
-                tileEl.style.left = tileData.x;
-                tileEl.style.top = tileData.y;
+                // Convert percentages back to pixels based on current board size
+                tileEl.style.left = (tileData.xPercent * boardRect.width / 100) + 'px';
+                tileEl.style.top = (tileData.yPercent * boardRect.height / 100) + 'px';
                 tileEl.style.zIndex = tileData.zIndex;
                 document.getElementById('boardContainer').appendChild(tileEl);
             });
