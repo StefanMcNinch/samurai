@@ -6,15 +6,11 @@
     <title>Samurai - Multiplayer Board Game</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.1/peerjs.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            background: #1a0a00;
+            background-image: 
+                radial-gradient(ellipse at top, #3d1a00 0%, #1a0a00 70%);
             min-height: 100vh;
             padding: 10px;
             user-select: none;
@@ -30,92 +26,100 @@
         }
         
         .left-panel {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.15'/%3E%3Crect width='400' height='400' fill='%23f5e6c8' opacity='0.9'/%3E%3C/svg%3E");
+            background-color: #f0deb4;
+            border-radius: 5px;
             padding: 20px;
             width: 300px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 0 30px rgba(0,0,0,0.8), inset 0 0 60px rgba(139,69,19,0.2);
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            border: 3px solid #8B4513;
         }
         
         .game-area {
             flex: 1;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background: #c8a96e;
+            border-radius: 5px;
+            padding: 15px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8), inset 0 0 60px rgba(139,69,19,0.3);
             position: relative;
             overflow: hidden;
+            border: 3px solid #8B4513;
         }
         
         h1 {
             text-align: center;
-            color: #d35400;
-            margin-bottom: 20px;
-            font-size: 2em;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            color: #8B0000;
+            margin-bottom: 15px;
+            font-size: 2.5em;
+            font-family: serif;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+            letter-spacing: 4px;
         }
         
         .connection-panel {
-            background: #f8f9fa;
+            background: rgba(139,69,19,0.1);
             padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            border-radius: 3px;
+            margin-bottom: 15px;
+            border: 1px solid #8B4513;
         }
         
         .status {
-            padding: 10px;
-            background: #e8f4f8;
-            border-left: 4px solid #3498db;
-            border-radius: 5px;
+            padding: 8px;
+            background: rgba(255,255,255,0.5);
+            border-left: 4px solid #8B4513;
+            border-radius: 3px;
             margin-bottom: 10px;
-            font-size: 14px;
+            font-size: 12px;
+            color: #3d1a00;
         }
         
         .status.connected {
-            background: #d4edda;
-            border-left-color: #28a745;
+            background: rgba(144,238,144,0.3);
+            border-left-color: #2d6a2d;
         }
         
         .status.waiting {
-            background: #fff3cd;
-            border-left-color: #ffc107;
-        }
-        
-        .status.error {
-            background: #f8d7da;
-            border-left-color: #dc3545;
+            background: rgba(255,215,0,0.2);
+            border-left-color: #8B6914;
         }
         
         .room-link {
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px;
-            margin: 10px 0;
+            background: rgba(255,255,255,0.4);
+            padding: 8px;
+            border-radius: 3px;
+            margin: 8px 0;
             word-break: break-all;
-            font-size: 12px;
-            border: 2px solid #dee2e6;
+            font-size: 11px;
+            border: 1px solid #8B4513;
+            color: #3d1a00;
         }
         
         button {
             width: 100%;
-            padding: 12px 15px;
-            background: linear-gradient(135deg, #e67e22, #d35400);
-            color: white;
-            border: none;
-            border-radius: 8px;
+            padding: 10px 15px;
+            background: linear-gradient(135deg, #8B0000, #c0392b);
+            color: #f5e6c8;
+            border: 2px solid #5a0000;
+            border-radius: 3px;
             cursor: pointer;
             transition: all 0.3s;
             font-weight: 600;
-            margin-bottom: 10px;
-            font-size: 16px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-family: serif;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
         }
         
         button:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4);
+            background: linear-gradient(135deg, #a00000, #e74c3c);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.4);
         }
         
         button:disabled {
@@ -134,16 +138,13 @@
         svg {
             width: 100%;
             height: 100%;
-            background: #f0f0f0;
-            border-radius: 10px;
+            border-radius: 3px;
             max-width: 900px;
             display: block;
             margin: 0 auto;
         }
         
-        .hex {
-            cursor: pointer;
-        }
+        .hex { cursor: pointer; }
         
         .draggable-tile {
             position: absolute;
@@ -155,6 +156,10 @@
             border: none;
         }
         
+        .draggable-tile.last-played svg {
+            filter: drop-shadow(0 0 6px #ffd700) drop-shadow(0 0 10px #ffaa00);
+        }
+        
         .draggable-tile.dragging {
             z-index: 1000;
             pointer-events: none;
@@ -163,7 +168,7 @@
         .draggable-tile svg {
             width: 100%;
             height: 100%;
-            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5));
             background: transparent;
         }
         
@@ -185,118 +190,129 @@
         .draggable-token svg {
             width: 100%;
             height: 100%;
-            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.4));
+            filter: drop-shadow(1px 1px 3px rgba(0,0,0,0.6));
         }
         
         .deck-area {
             display: flex;
             gap: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             position: relative;
         }
         
-        .deck {
-            text-align: center;
-            position: relative;
-        }
+        .deck { text-align: center; position: relative; }
         
         .deck-pile {
             width: 80px;
             height: 69px;
-            background: linear-gradient(135deg, #c0392b, #e74c3c);
-            border-radius: 8px;
+            background: linear-gradient(135deg, #8B0000, #c0392b);
+            border-radius: 3px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
+            color: #f5e6c8;
             font-weight: bold;
-            border: 3px solid #922b21;
+            border: 2px solid #5a0000;
             margin-bottom: 5px;
             position: relative;
+            font-size: 20px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
         }
         
         .deck-pile.yellow-deck {
-            background: linear-gradient(135deg, #f39c12, #f1c40f);
-            border-color: #d68910;
+            background: linear-gradient(135deg, #8B6914, #d4a017);
+            border-color: #5a4500;
         }
         
-        .deck-pile.empty {
-            opacity: 0.3;
-        }
+        .deck-pile.empty { opacity: 0.3; }
         
         .deck-label {
-            font-size: 12px;
-            color: #666;
+            font-size: 11px;
+            color: #5a3000;
+            font-family: serif;
+            letter-spacing: 1px;
         }
         
         .player-hand {
-            background: #f8f9fa;
-            border-radius: 10px;
+            background: rgba(139,69,19,0.1);
+            border-radius: 3px;
             padding: 15px;
             min-height: 200px;
             position: relative;
             flex: 1;
-            border: 2px dashed #ccc;
+            border: 2px dashed #8B4513;
         }
         
         .hand-title {
             font-weight: 600;
             margin-bottom: 10px;
-            color: #2c3e50;
+            color: #5a3000;
+            font-family: serif;
+            font-size: 13px;
+            letter-spacing: 1px;
         }
         
-       .token-storage {
-    position: absolute;
-    top: 50%;
-    right: 20px;
-    transform: translateY(-50%);
-    background: rgba(255,255,255,0.9);
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-}
+        .token-storage {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(240,222,180,0.92);
+            padding: 12px;
+            border-radius: 3px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            border: 2px solid #8B4513;
+        }
         
         .token-storage-title {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
-            margin-bottom: 10px;
-            color: #666;
+            margin-bottom: 8px;
+            color: #5a3000;
+            font-family: serif;
+            letter-spacing: 1px;
         }
         
         .token-row {
             display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
+            gap: 8px;
+            margin-bottom: 8px;
         }
         
         .game-info {
             display: flex;
             justify-content: space-between;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            margin-bottom: 15px;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(139,69,19,0.15);
+            border-radius: 3px;
+            margin-bottom: 10px;
+            border: 1px solid #8B4513;
         }
         
         .turn-indicator {
             font-weight: 600;
-            color: #2c3e50;
+            color: #5a3000;
+            font-family: serif;
+            letter-spacing: 1px;
         }
         
         .opponent-hand-count {
-            background: #e8f4f8;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 10px;
+            background: rgba(139,69,19,0.1);
+            padding: 8px;
+            border-radius: 3px;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #5a3000;
+            border: 1px solid #8B4513;
         }
         
         .menu-screen {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #1a0a00;
+            background-image: radial-gradient(ellipse at center, #3d1a00 0%, #1a0a00 70%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -304,48 +320,64 @@
         }
         
         .menu-content {
-            background: white;
+            background: #f0deb4;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.1'/%3E%3C/svg%3E");
             padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border-radius: 5px;
+            box-shadow: 0 0 60px rgba(139,0,0,0.5), 0 0 120px rgba(0,0,0,0.8);
             text-align: center;
-            max-width: 400px;
+            max-width: 420px;
+            border: 3px solid #8B4513;
         }
         
         .menu-content h1 {
-            font-size: 3em;
-            margin-bottom: 30px;
+            font-size: 4em;
+            margin-bottom: 10px;
+            color: #8B0000;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+        }
+        
+        .menu-subtitle {
+            font-family: serif;
+            color: #5a3000;
+            margin-bottom: 25px;
+            font-size: 14px;
+            letter-spacing: 3px;
+            border-top: 1px solid #8B4513;
+            border-bottom: 1px solid #8B4513;
+            padding: 8px 0;
         }
         
         .menu-buttons {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 10px;
         }
         
         .room-input {
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
+            padding: 10px;
+            border: 2px solid #8B4513;
+            border-radius: 3px;
+            font-size: 14px;
             width: 100%;
-            margin-bottom: 10px;
+            background: rgba(255,255,255,0.6);
+            color: #3d1a00;
+            font-family: serif;
         }
         
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
     <div class="menu-screen" id="menuScreen">
         <div class="menu-content">
             <h1>侍</h1>
+            <div class="menu-subtitle">S A M U R A I</div>
             <div class="menu-buttons">
-                <button onclick="createRoom()">Create New Game</button>
+                <button onclick="createRoom()">⚔ Create New Game</button>
                 <input type="text" class="room-input" id="roomCodeInput" placeholder="Enter room code">
-                <button onclick="joinRoom()">Join Game</button>
-                <button onclick="playSolo()">Play Solo (Test Mode)</button>
+                <button onclick="joinRoom()">⛩ Join Game</button>
+                <button onclick="playSolo()">🗡 Play Solo (Test Mode)</button>
             </div>
         </div>
     </div>
@@ -444,7 +476,6 @@
             }
 
             const drawnTile = deck.pop();
-            myHandTiles.push(drawnTile);
             
             // Add the new tile to the player's hand visually
             const tileEl = createTileElement(drawnTile, false); // Create face-up, not face-down
@@ -455,53 +486,56 @@
             
         }
         // Local state
-        let myHandTiles = [];
         let draggedElement = null;
+        let lastPlayedId = null; // id of the most recently placed board tile
         let dragOffset = {x: 0, y: 0};
         let tileIdCounter = 0;
         let tokenIdCounter = 0;
         
         // Board configuration
-       const HEX_SIZE = 27.5;
+        const HEX_SIZE = 25;
         
         // Map layout
         const MAP_LAYOUT = [
-           [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0],
             [0,0,0,0,0,0,0,0,0,0,0,0,0,4,1,2,0],
-             [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0],
+             [0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0],
             [0,0,0,0,0,0,0,0,0,1,2,1,2,1,2,0,0],
-            [0,0,0,1,2,1,1,2,0,2,1,1,1,1,0,0,0,0],
+            [0,0,1,2,1,1,2,0,2,1,1,1,1,0,0,0],
              [0,0,2,1,1,2,1,1,1,1,1,5,1,2,0,0,0],
-            [0,0,0,0,0,0,0,1,4,1,2,1,1,1,0,0,0],
+            [0,0,0,0,0,0,1,4,1,2,1,1,1,0,0,0],
             [0,0,0,0,0,0,2,1,0,0,0,0,2,0,0,0,0],
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
             
         ];
         
-        // Tile types
+        // Tile types - matching rulebook exactly
         const TILE_TYPES = [
-            {type: 'Any', value: 1},
-            {type: 'Any', value: 1},
-            {type: 'Any', value: 2},
-            {type: 'Any', value: 2},
-            {type: 'Any', value: 3},
-            {type: 'Sqre', value: 2},
-            {type: 'Sqre', value: 3},
-            {type: 'Sqre', value: 4},
-            {type: 'ship', value: 1},
-            {type: 'ship', value: 1},
-            {type: 'ship', value: 2},
-            {type: 'Fast', value: 1},
-            {type: 'Crcl', value: 2},
-            {type: 'Crcl', value: 3},
-            {type: 'Crcl', value: 4},
-            {type: 'Swch', value: 0},
-            {type: 'Move', value: 0},
-            {type: 'Tri', value: 2},
-            {type: 'Tri', value: 3},
-            {type: 'Tri', value: 4}
+            // Caste-specific tiles
+            {type: 'Buddha', value: 2, caste: 'religion', fast: false},
+            {type: 'Buddha', value: 2, caste: 'religion', fast: false},
+            {type: 'Buddha', value: 3, caste: 'religion', fast: false},
+            {type: 'Buddha', value: 4, caste: 'religion', fast: false},
+            {type: 'Rice',   value: 2, caste: 'commerce', fast: false},
+            {type: 'Rice',   value: 2, caste: 'commerce', fast: false},
+            {type: 'Rice',   value: 3, caste: 'commerce', fast: false},
+            {type: 'Rice',   value: 4, caste: 'commerce', fast: false},
+            {type: 'Castle', value: 2, caste: 'military', fast: false},
+            {type: 'Castle', value: 2, caste: 'military', fast: false},
+            {type: 'Castle', value: 3, caste: 'military', fast: false},
+            {type: 'Castle', value: 4, caste: 'military', fast: false},
+            // Wild tiles
+            {type: 'Samurai', value: 1, caste: 'wild', fast: false},
+            {type: 'Samurai', value: 2, caste: 'wild', fast: false},
+            {type: 'Samurai', value: 3, caste: 'wild', fast: false},
+            {type: 'Ronin',   value: 1, caste: 'wild', fast: false},
+            {type: 'Ship',    value: 1, caste: 'wild', fast: false},
+            {type: 'Ship',    value: 2, caste: 'wild', fast: false},
+            // Action tiles
+            {type: 'Switch', value: 0, caste: 'action', fast: false},
+            {type: 'Move',   value: 0, caste: 'action', fast: false}
         ];
         
         // Check URL for room code on load
@@ -583,41 +617,12 @@
             document.getElementById('gameContainer').classList.remove('hidden');
         }
         
-        // Initialize PeerJS with improved ICE configuration
+        // Initialize PeerJS
         function initPeer(customId = null) {
             const peerId = customId || 'samurai-' + Math.random().toString(36).substring(2, 9);
             
             peer = new Peer(peerId, {
-                debug: 3, // Increased debug level for better troubleshooting
-                config: {
-                    'iceServers': [
-                        // Google's public STUN servers
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' },
-                        { urls: 'stun:stun3.l.google.com:19302' },
-                        { urls: 'stun:stun4.l.google.com:19302' },
-                        
-                        // OpenRelay TURN servers (free, public)
-                        {
-                            urls: 'turn:openrelay.metered.ca:80',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject'
-                        },
-                        {
-                            urls: 'turn:openrelay.metered.ca:443',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject'
-                        },
-                        {
-                            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject'
-                        }
-                    ],
-                    'sdpSemantics': 'unified-plan',
-                    'iceCandidatePoolSize': 10
-                }
+                debug: 2
             });
             
             peer.on('open', (id) => {
@@ -637,41 +642,12 @@
             
             peer.on('error', (err) => {
                 console.error('PeerJS Error:', err);
-                console.error('Error type:', err.type);
-                console.error('Error message:', err.message);
-                
-                const statusEl = document.getElementById('status');
-                statusEl.classList.add('error');
-                
                 if (err.type === 'peer-unavailable') {
-                    statusEl.textContent = 'Room not found. Creating new game...';
+                    document.getElementById('status').textContent = 'Room not found. Creating new game...';
                     setTimeout(() => {
                         createRoom();
                     }, 2000);
-                } else if (err.type === 'network') {
-                    statusEl.textContent = `Network error: ${err.message}. Check your connection.`;
-                } else if (err.type === 'unavailable-id') {
-                    statusEl.textContent = 'Room ID unavailable. Generating new room...';
-                    setTimeout(() => {
-                        createRoom();
-                    }, 2000);
-                } else {
-                    statusEl.textContent = `Connection error: ${err.type} - ${err.message}`;
                 }
-            });
-            
-            // Add disconnection handler
-            peer.on('disconnected', () => {
-                console.log('Disconnected from PeerJS server');
-                document.getElementById('status').textContent = 'Disconnected - Attempting to reconnect...';
-                document.getElementById('status').classList.add('error');
-                
-                // Try to reconnect
-                setTimeout(() => {
-                    if (!peer.destroyed) {
-                        peer.reconnect();
-                    }
-                }, 3000);
             });
         }
         
@@ -679,20 +655,14 @@
         function connectToHost() {
             if (!peer) return;
             
-            console.log('Attempting to connect to host:', roomCode);
-            conn = peer.connect(roomCode, {
-                reliable: true,
-                serialization: 'json'
-            });
+            conn = peer.connect(roomCode);
             setupConnection();
         }
         
-        // Setup connection with enhanced error handling
+        // Setup connection
         function setupConnection() {
             conn.on('open', () => {
-                console.log('Connection opened successfully');
                 document.getElementById('status').textContent = 'Connected!';
-                document.getElementById('status').classList.remove('error', 'waiting');
                 document.getElementById('status').classList.add('connected');
                 
                 if (isHost) {
@@ -702,21 +672,12 @@
             });
             
             conn.on('data', (data) => {
-                console.log('Received data:', data);
                 handleMessage(data);
             });
             
             conn.on('close', () => {
-                console.log('Connection closed');
                 document.getElementById('status').textContent = 'Opponent disconnected';
                 document.getElementById('status').classList.remove('connected');
-                document.getElementById('status').classList.add('error');
-            });
-            
-            conn.on('error', (err) => {
-                console.error('Connection error:', err);
-                document.getElementById('status').textContent = `Connection error: ${err}`;
-                document.getElementById('status').classList.add('error');
             });
         }
         
@@ -760,40 +721,88 @@
             const svg = document.getElementById('board');
             svg.innerHTML = '';
             
+            // Parchment background
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            
+            // Water pattern
+            const waterPattern = document.createElementNS('http://www.w3.org/2000/svg', 'pattern');
+            waterPattern.setAttribute('id', 'waterPat');
+            waterPattern.setAttribute('width', '20');
+            waterPattern.setAttribute('height', '20');
+            waterPattern.setAttribute('patternUnits', 'userSpaceOnUse');
+            const waterRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            waterRect.setAttribute('width', '20');
+            waterRect.setAttribute('height', '20');
+            waterRect.setAttribute('fill', '#4a8ab5');
+            const waterLine1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            waterLine1.setAttribute('d', 'M0,10 Q5,7 10,10 Q15,13 20,10');
+            waterLine1.setAttribute('stroke', '#6aaed6');
+            waterLine1.setAttribute('stroke-width', '1.5');
+            waterLine1.setAttribute('fill', 'none');
+            const waterLine2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            waterLine2.setAttribute('d', 'M0,16 Q5,13 10,16 Q15,19 20,16');
+            waterLine2.setAttribute('stroke', '#6aaed6');
+            waterLine2.setAttribute('stroke-width', '1');
+            waterLine2.setAttribute('fill', 'none');
+            waterPattern.appendChild(waterRect);
+            waterPattern.appendChild(waterLine1);
+            waterPattern.appendChild(waterLine2);
+            
+            // Land pattern
+            const landPattern = document.createElementNS('http://www.w3.org/2000/svg', 'pattern');
+            landPattern.setAttribute('id', 'landPat');
+            landPattern.setAttribute('width', '20');
+            landPattern.setAttribute('height', '20');
+            landPattern.setAttribute('patternUnits', 'userSpaceOnUse');
+            const landRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            landRect.setAttribute('width', '20');
+            landRect.setAttribute('height', '20');
+            landRect.setAttribute('fill', '#c8b97a');
+            const landNoise = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            landNoise.setAttribute('cx', '5');
+            landNoise.setAttribute('cy', '5');
+            landNoise.setAttribute('r', '1');
+            landNoise.setAttribute('fill', '#b8a96a');
+            landNoise.setAttribute('opacity', '0.4');
+            landPattern.appendChild(landRect);
+            landPattern.appendChild(landNoise);
+            
+            defs.appendChild(waterPattern);
+            defs.appendChild(landPattern);
+            svg.appendChild(defs);
+            
+            // Outer background
+            const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bg.setAttribute('width', '900');
+            bg.setAttribute('height', '600');
+            bg.setAttribute('fill', '#2a5a7a');
+            bg.setAttribute('opacity', '0.6');
+            svg.appendChild(bg);
+            
             gameState.board.forEach((hex, i) => {
-                // Point-up hex grid positioning
                 const x = hex.col * HEX_SIZE * 1.732 + (hex.row % 2) * HEX_SIZE * 0.866 + 50;
                 const y = hex.row * HEX_SIZE * 1.5 + 50;
                 
                 const hexPath = createHexagon(x, y, HEX_SIZE);
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 path.setAttribute('d', hexPath);
-                path.setAttribute('fill', hex.type === 0 ? '#5dade2' : '#90EE90');
-                path.setAttribute('stroke', '#2c3e50');
-                path.setAttribute('stroke-width', '1');
+                
+                if (hex.type === 0) {
+                    path.setAttribute('fill', 'url(#waterPat)');
+                    path.setAttribute('stroke', '#2a6a9a');
+                } else {
+                    path.setAttribute('fill', 'url(#landPat)');
+                    path.setAttribute('stroke', '#8B6914');
+                }
+                path.setAttribute('stroke-width', '1.5');
                 path.setAttribute('class', 'hex');
                 svg.appendChild(path);
                 
-                if (hex.type === 0) {
-                    const wave = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                    wave.setAttribute('x', x);
-                    wave.setAttribute('y', y);
-                    wave.setAttribute('text-anchor', 'middle');
-                    wave.setAttribute('fill', '#3498db');
-                    wave.setAttribute('font-size', '20');
-                    wave.setAttribute('opacity', '0.3');
-                    wave.textContent = '〜';
-                    svg.appendChild(wave);
-                }
-                
+                // Pagodas
                 let pagodaCount = 0;
-                if (hex.type === 2) {
-                    pagodaCount = 1;
-                } else if (hex.type === 4) {
-                    pagodaCount = 2;
-                } else if (hex.type === 5) {
-                    pagodaCount = 3;
-                }
+                if (hex.type === 2) pagodaCount = 1;
+                else if (hex.type === 4) pagodaCount = 2;
+                else if (hex.type === 5) pagodaCount = 3;
                 
                 if (pagodaCount > 0) {
                     for (let p = 0; p < pagodaCount; p++) {
@@ -801,8 +810,9 @@
                         pagoda.setAttribute('x', x - (pagodaCount - 1) * 10 + p * 20);
                         pagoda.setAttribute('y', y + 5);
                         pagoda.setAttribute('text-anchor', 'middle');
-                        pagoda.setAttribute('fill', '#c0392b');
-                        pagoda.setAttribute('font-size', '24');
+                        pagoda.setAttribute('fill', '#8B0000');
+                        pagoda.setAttribute('font-size', '18');
+                        pagoda.setAttribute('filter', 'drop-shadow(1px 1px 1px rgba(0,0,0,0.5))');
                         pagoda.textContent = '⛩';
                         svg.appendChild(pagoda);
                     }
@@ -851,6 +861,54 @@
             });
         }
         
+        function renderTileFace(svg, tile, faceDown) {
+            // Clear existing text, keep the path
+            svg.querySelectorAll('text').forEach(t => t.remove());
+            const path = svg.querySelector('path');
+            
+            if (faceDown) {
+                path.setAttribute('fill', getTileColor(tile, true));
+                const kanji = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                kanji.setAttribute('x', '30');
+                kanji.setAttribute('y', '32');
+                kanji.setAttribute('text-anchor', 'middle');
+                kanji.setAttribute('fill', 'rgba(255,255,255,0.2)');
+                kanji.setAttribute('font-size', '22');
+                kanji.textContent = '侍';
+                svg.appendChild(kanji);
+            } else {
+                path.setAttribute('fill', getTileColor(tile, false));
+                const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                icon.setAttribute('x', '30');
+                icon.setAttribute('y', '24');
+                icon.setAttribute('text-anchor', 'middle');
+                icon.setAttribute('fill', 'rgba(255,255,255,0.9)');
+                icon.setAttribute('font-size', '14');
+                icon.textContent = getTileIcon(tile);
+                svg.appendChild(icon);
+                if (tile.value > 0) {
+                    const val = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    val.setAttribute('x', '30');
+                    val.setAttribute('y', '40');
+                    val.setAttribute('text-anchor', 'middle');
+                    val.setAttribute('fill', 'white');
+                    val.setAttribute('font-size', '11');
+                    val.setAttribute('font-weight', 'bold');
+                    val.textContent = tile.value;
+                    svg.appendChild(val);
+                } else {
+                    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    lbl.setAttribute('x', '30');
+                    lbl.setAttribute('y', '38');
+                    lbl.setAttribute('text-anchor', 'middle');
+                    lbl.setAttribute('fill', 'rgba(255,255,255,0.9)');
+                    lbl.setAttribute('font-size', '9');
+                    lbl.textContent = tile.type;
+                    svg.appendChild(lbl);
+                }
+            }
+        }
+        
         function createTileElement(tile, faceDown = false) {
             const tileDiv = document.createElement('div');
             tileDiv.className = 'draggable-tile';
@@ -863,44 +921,39 @@
             const hexPath = createHexagon(30, 26, 25);
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', hexPath);
-            
-            if (faceDown) {
-                path.setAttribute('fill', tile.color === 'red' ? '#c0392b' : '#d68910');
-            } else {
-                path.setAttribute('fill', tile.color === 'red' ? '#e74c3c' : '#f1c40f');
-            }
-            
             path.setAttribute('stroke', '#2c3e50');
             path.setAttribute('stroke-width', '2');
-            
             svg.appendChild(path);
             
-            if (!faceDown) {
-                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                text.setAttribute('x', '30');
-                text.setAttribute('y', '32');
-                text.setAttribute('text-anchor', 'middle');
-                text.setAttribute('fill', 'white');
-                text.setAttribute('font-size', '14');
-                text.setAttribute('font-weight', 'bold');
-                let symbol = tile.type.charAt(0).toUpperCase();
-if (tile.type === 'ship') symbol = 'Ship';
-if (tile.type === 'Any') symbol = 'Any';
-if (tile.type === 'Crcl') symbol = 'Crcl';
-if (tile.type === 'Sqre') symbol = 'Sqre';
-if (tile.type === 'Tri') symbol = 'Tri';
-if (tile.type === 'Fast') symbol = 'Fast';
-if (tile.type === 'Move') symbol = 'Move';
-if (tile.type === 'Swch') symbol = 'Swch';
-text.textContent = symbol + tile.value;
-                svg.appendChild(text);
-            }
+            renderTileFace(svg, tile, faceDown);
             
             tileDiv.appendChild(svg);
             tileDiv.addEventListener('mousedown', startDragTile);
             tileDiv.addEventListener('contextmenu', flipTile);
             
             return tileDiv;
+        }
+        
+        function getTileColor(tile, faceDown) {
+            if (faceDown) return tile.color === 'red' ? '#6B0000' : '#6B4914';
+            if (tile.caste === 'religion') return '#6b3fa0';
+            if (tile.caste === 'commerce') return '#1a7a40';
+            if (tile.caste === 'military') return '#8B0000';
+            if (tile.caste === 'wild') return '#8B4513';
+            if (tile.caste === 'action') return '#1a4a7a';
+            return tile.color === 'red' ? '#8B0000' : '#8B6914';
+        }
+        
+        function getTileIcon(tile) {
+            if (tile.type === 'Buddha') return '☸';
+            if (tile.type === 'Rice') return '🌾';
+            if (tile.type === 'Castle') return '🏯';
+            if (tile.type === 'Samurai') return '侍';
+            if (tile.type === 'Ronin') return '浪';
+            if (tile.type === 'Ship') return '船';
+            if (tile.type === 'Switch') return '⇄';
+            if (tile.type === 'Move') return '移';
+            return tile.type;
         }
         
         function createTokens() {
@@ -1008,6 +1061,17 @@ text.textContent = symbol + tile.value;
             draggedElement.style.top = (e.clientY - rect.top - dragOffset.y) + 'px';
         }
         
+        function highlightLastPlayed() {
+            document.querySelectorAll('.draggable-tile.last-played').forEach(t => {
+                t.classList.remove('last-played');
+            });
+            if (!lastPlayedId) return;
+            const el = document.querySelector(
+                `#boardContainer .draggable-tile[data-tile-id="${lastPlayedId}"]`
+            );
+            if (el) el.classList.add('last-played');
+        }
+        
         function dropTile(e) {
             if (!draggedElement) return;
             
@@ -1018,6 +1082,8 @@ text.textContent = symbol + tile.value;
             if (e.clientX >= handRect.left && e.clientX <= handRect.right &&
                 e.clientY >= handRect.top && e.clientY <= handRect.bottom) {
                 
+                const cameFromBoard = tile.parentElement.id === 'boardContainer';
+                
                 if (tile.parentElement.id !== 'playerHand') {
                     document.getElementById('playerHand').appendChild(tile);
                     
@@ -1026,11 +1092,20 @@ text.textContent = symbol + tile.value;
                         updateTileVisual(tile);
                     }
                 }
+                
+                // Undo: if returning the last-played tile from the board, clear the highlight
+                if (cameFromBoard && lastPlayedId === tile.dataset.tileId) {
+                    lastPlayedId = null;
+                    highlightLastPlayed();
+                }
             }
             else if (e.clientX >= document.getElementById('boardContainer').getBoundingClientRect().left) {
                 if (tile.parentElement.id !== 'boardContainer') {
                     document.getElementById('boardContainer').appendChild(tile);
                 }
+                // Mark this as the last-played tile (only when it lands on the board)
+                lastPlayedId = tile.dataset.tileId;
+                highlightLastPlayed();
             }
             
             updateStackOrder(e.clientX, e.clientY);
@@ -1040,6 +1115,36 @@ text.textContent = symbol + tile.value;
             document.removeEventListener('mouseup', dropTile);
             
             syncGameState();
+        }
+        
+        function snapToNearestHex(boardX, boardY) {
+            // boardX/Y are pixel coords within boardContainer.
+            // Hex centers live in the 900x600 SVG viewBox; convert board px -> svg coords.
+            const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
+            const svgX = (boardX / boardRect.width) * 900;
+            const svgY = (boardY / boardRect.height) * 600;
+            
+            let best = null;
+            let bestDist = Infinity;
+            gameState.board.forEach(hex => {
+                if (hex.type === undefined) return;
+                const hx = hex.col * HEX_SIZE * 1.732 + (hex.row % 2) * HEX_SIZE * 0.866 + 50;
+                const hy = hex.row * HEX_SIZE * 1.5 + 50;
+                const d = Math.hypot(svgX - hx, svgY - hy);
+                if (d < bestDist) {
+                    bestDist = d;
+                    best = {svgX: hx, svgY: hy};
+                }
+            });
+            
+            // Only snap if reasonably close to a hex center (within ~1.2 hex radii)
+            if (!best || bestDist > HEX_SIZE * 1.2) return null;
+            
+            // Convert chosen svg center back to board pixels
+            return {
+                x: (best.svgX / 900) * boardRect.width,
+                y: (best.svgY / 600) * boardRect.height
+            };
         }
         
         function dropToken(e) {
@@ -1059,6 +1164,15 @@ text.textContent = symbol + tile.value;
                 
                 // Always append to boardContainer for tokens dropped on board
                 document.getElementById('boardContainer').appendChild(token);
+                
+                // Snap to nearest hex center (token is 24px, center it on the hex)
+                const boardX = e.clientX - boardRect.left - dragOffset.x;
+                const boardY = e.clientY - boardRect.top - dragOffset.y;
+                const snap = snapToNearestHex(boardX + 12, boardY + 12);
+                if (snap) {
+                    token.style.left = (snap.x - 12) + 'px';
+                    token.style.top = (snap.y - 12) + 'px';
+                }
             } else if (e.clientX >= tokenStorage.left && e.clientX <= tokenStorage.right &&
                        e.clientY >= tokenStorage.top && e.clientY <= tokenStorage.bottom) {
                 // Return to original storage container if dropped back in storage
@@ -1100,40 +1214,18 @@ text.textContent = symbol + tile.value;
                       gameState.yellowDeck.find(t => t.id === tileId) ||
                       gameState.tiles.find(t => t.id === tileId);
             
+            // Fall back to reconstructing from id if not found
+            if (!tile) {
+                const color = tileId.startsWith('r') ? 'red' : 'yellow';
+                const index = parseInt(tileId.substring(1));
+                if (!isNaN(index) && TILE_TYPES[index]) {
+                    tile = {...TILE_TYPES[index], id: tileId, color: color};
+                }
+            }
             if (!tile) return;
             
             const svg = tileEl.querySelector('svg');
-            const path = svg.querySelector('path');
-            
-            if (faceDown) {
-                path.setAttribute('fill', tile.color === 'red' ? '#c0392b' : '#d68910');
-                const text = svg.querySelector('text');
-                if (text) text.remove();
-            } else {
-                path.setAttribute('fill', tile.color === 'red' ? '#e74c3c' : '#f1c40f');
-                let text = svg.querySelector('text');
-                if (!text) {
-                    text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                    text.setAttribute('x', '30');
-                    text.setAttribute('y', '32');
-                    text.setAttribute('text-anchor', 'middle');
-                    text.setAttribute('fill', 'white');
-                    text.setAttribute('font-size', '12');
-                    text.setAttribute('font-weight', 'bold');
-                    svg.appendChild(text);
-                }
-                // S=Samurai, H=Helmet, B=Buddha, Ship=Ship, E=Exchange, M=Move, Sp=Special
-                let symbol = tile.type.charAt(0).toUpperCase();
-                 if (tile.type === 'ship') symbol = 'Ship';
-                 if (tile.type === 'Any') symbol = 'Any';
-                 if (tile.type === 'Crcl') symbol = 'Crcl';
-                 if (tile.type === 'Sqre') symbol = 'Sqre';
-                 if (tile.type === 'Tri') symbol = 'Tri';
-                 if (tile.type === 'Fast') symbol = 'Fast';
-                 if (tile.type === 'Move') symbol = 'Move';
-                 if (tile.type === 'Swch') symbol = 'Swch';
-                text.textContent = symbol + tile.value;
-            }
+            renderTileFace(svg, tile, faceDown);
         }
         
         function updateStackOrder(x, y) {
@@ -1228,7 +1320,8 @@ text.textContent = symbol + tile.value;
                 type: 'gameState',
                 data: {
                     ...gameState,
-                    opponentHandCount: handCount
+                    opponentHandCount: handCount,
+                    lastPlayedId: lastPlayedId
                 }
             });
         }
@@ -1239,6 +1332,10 @@ text.textContent = symbol + tile.value;
                     const newState = msg.data;
                     gameState = {...gameState, ...newState};
                     
+                    if (newState.lastPlayedId !== undefined) {
+                        lastPlayedId = newState.lastPlayedId;
+                    }
+                    
                     updateBoardTiles(newState.tiles || []);
                     updateBoardTokens(newState.tokens || []);
                     
@@ -1246,6 +1343,7 @@ text.textContent = symbol + tile.value;
                     
                     drawBoard();
                     updateUI();
+                    highlightLastPlayed();
                     break;
             }
         }
