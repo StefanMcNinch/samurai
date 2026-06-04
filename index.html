@@ -365,6 +365,35 @@
             font-family: serif;
         }
         
+        .captured-tray {
+            background: rgba(139,69,19,0.1);
+            border-radius: 3px;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #8B4513;
+        }
+        
+        .tray-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #5a3000;
+            font-family: serif;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        
+        .tray-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-height: 28px;
+        }
+        
+        .tray-idol {
+            width: 24px;
+            height: 24px;
+        }
+        
         .hidden { display: none !important; }
     </style>
 </head>
@@ -417,26 +446,28 @@
                 <div class="opponent-hand-count">
                     Opponent's Hand: <strong id="opponentCount">0</strong> tiles
                 </div>
+                
+                <div class="captured-tray" id="myTray">
+                    <div class="tray-title">Your Captured Idols</div>
+                    <div class="tray-row" id="myTrayRow"></div>
+                </div>
+                
+                <div class="captured-tray" id="oppTray">
+                    <div class="tray-title">Opponent's Captured Idols</div>
+                    <div class="tray-row" id="oppTrayRow"></div>
+                </div>
             </div>
         </div>
         
         <div class="game-area" id="gameArea">
             <div class="game-info" id="gameInfo">
-                <div class="turn-indicator" id="turnIndicator">Player 1's Turn</div>
-                <button onclick="endTurn()" style="width: auto; padding: 8px 20px; margin: 0;">End Turn</button>
+                <div class="turn-indicator" id="turnIndicator">⚔ Samurai</div>
             </div>
             
             <div class="board-container" id="boardContainer">
-                <svg id="board" viewBox="0 0 900 600">
+                <svg id="board" viewBox="0 0 1300 900">
                     <!-- Board will be generated here -->
                 </svg>
-                
-                <div class="token-storage" id="tokenStorage">
-                    <div class="token-storage-title">Tokens (drag to board)</div>
-                    <div class="token-row" id="squareTokens"></div>
-                    <div class="token-row" id="triangleTokens"></div>
-                    <div class="token-row" id="circleTokens"></div>
-                </div>
             </div>
         </div>
     </div>
@@ -456,34 +487,22 @@
             yellowDeck: [],
             tiles: [],
             tokens: [],
-            currentTurn: 1
+            captured: {1: [], 2: []}
         };
 
         function drawFromDeck(deckColor) {
-            // Check if it's the current player's turn
-            if (myPlayer !== gameState.currentTurn) {
-                alert("It is not your turn to draw a tile.");
-                return;
-            }
-
             let deck;
             if (deckColor === 'red' && gameState.redDeck.length > 0) {
                 deck = gameState.redDeck;
             } else if (deckColor === 'yellow' && gameState.yellowDeck.length > 0) {
                 deck = gameState.yellowDeck;
             } else {
-                return; // Deck is empty or invalid
+                return;
             }
-
             const drawnTile = deck.pop();
-            
-            // Add the new tile to the player's hand visually
-            const tileEl = createTileElement(drawnTile, false); // Create face-up, not face-down
+            const tileEl = createTileElement(drawnTile, false);
             document.getElementById('playerHand').appendChild(tileEl);
-            
-            // Sync the game state to the opponent
             syncGameState();
-            
         }
         // Local state
         let draggedElement = null;
@@ -493,7 +512,7 @@
         let tokenIdCounter = 0;
         
         // Board configuration
-        const HEX_SIZE = 25;
+        const HEX_SIZE = 42;
         
         // Map layout
         const MAP_LAYOUT = [
@@ -601,9 +620,12 @@
             isHost = true;
             myPlayer = 1;
             showGame();
-            initGame();
-            document.getElementById('status').textContent = 'Playing Solo Mode';
-            document.getElementById('status').classList.add('connected');
+            // Defer initGame one frame so the SVG has non-zero dimensions before drawing
+            requestAnimationFrame(() => {
+                initGame();
+                document.getElementById('status').textContent = 'Playing Solo Mode';
+                document.getElementById('status').classList.add('connected');
+            });
         }
         
         // Generate room code
@@ -703,10 +725,12 @@
             
             gameState.tiles = [];
             gameState.tokens = [];
+            gameState.captured = {1: [], 2: []};
             
             drawBoard();
             createDeckTiles();
-            createTokens();
+            distributeIdols();
+            renderTrays();
             updateUI();
         }
         
@@ -720,104 +744,202 @@
          function drawBoard() {
             const svg = document.getElementById('board');
             svg.innerHTML = '';
+            const ns = 'http://www.w3.org/2000/svg';
             
-            // Parchment background
-            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const defs = document.createElementNS(ns, 'defs');
             
-            // Water pattern
-            const waterPattern = document.createElementNS('http://www.w3.org/2000/svg', 'pattern');
-            waterPattern.setAttribute('id', 'waterPat');
-            waterPattern.setAttribute('width', '20');
-            waterPattern.setAttribute('height', '20');
-            waterPattern.setAttribute('patternUnits', 'userSpaceOnUse');
-            const waterRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            waterRect.setAttribute('width', '20');
-            waterRect.setAttribute('height', '20');
-            waterRect.setAttribute('fill', '#4a8ab5');
-            const waterLine1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            waterLine1.setAttribute('d', 'M0,10 Q5,7 10,10 Q15,13 20,10');
-            waterLine1.setAttribute('stroke', '#6aaed6');
-            waterLine1.setAttribute('stroke-width', '1.5');
-            waterLine1.setAttribute('fill', 'none');
-            const waterLine2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            waterLine2.setAttribute('d', 'M0,16 Q5,13 10,16 Q15,19 20,16');
-            waterLine2.setAttribute('stroke', '#6aaed6');
-            waterLine2.setAttribute('stroke-width', '1');
-            waterLine2.setAttribute('fill', 'none');
-            waterPattern.appendChild(waterRect);
-            waterPattern.appendChild(waterLine1);
-            waterPattern.appendChild(waterLine2);
+            // Parchment land fill
+            const landGrad = document.createElementNS(ns, 'linearGradient');
+            landGrad.setAttribute('id', 'landGrad');
+            landGrad.setAttribute('x1', '0%'); landGrad.setAttribute('y1', '0%');
+            landGrad.setAttribute('x2', '100%'); landGrad.setAttribute('y2', '100%');
+            const lg1 = document.createElementNS(ns, 'stop');
+            lg1.setAttribute('offset', '0%'); lg1.setAttribute('stop-color', '#d4b96a');
+            const lg2 = document.createElementNS(ns, 'stop');
+            lg2.setAttribute('offset', '100%'); lg2.setAttribute('stop-color', '#c4a455');
+            landGrad.appendChild(lg1); landGrad.appendChild(lg2);
             
-            // Land pattern
-            const landPattern = document.createElementNS('http://www.w3.org/2000/svg', 'pattern');
-            landPattern.setAttribute('id', 'landPat');
-            landPattern.setAttribute('width', '20');
-            landPattern.setAttribute('height', '20');
-            landPattern.setAttribute('patternUnits', 'userSpaceOnUse');
-            const landRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            landRect.setAttribute('width', '20');
-            landRect.setAttribute('height', '20');
-            landRect.setAttribute('fill', '#c8b97a');
-            const landNoise = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            landNoise.setAttribute('cx', '5');
-            landNoise.setAttribute('cy', '5');
-            landNoise.setAttribute('r', '1');
-            landNoise.setAttribute('fill', '#b8a96a');
-            landNoise.setAttribute('opacity', '0.4');
-            landPattern.appendChild(landRect);
-            landPattern.appendChild(landNoise);
+            // Deep water fill
+            const waterGrad = document.createElementNS(ns, 'linearGradient');
+            waterGrad.setAttribute('id', 'waterGrad');
+            waterGrad.setAttribute('x1', '0%'); waterGrad.setAttribute('y1', '0%');
+            waterGrad.setAttribute('x2', '100%'); waterGrad.setAttribute('y2', '100%');
+            const wg1 = document.createElementNS(ns, 'stop');
+            wg1.setAttribute('offset', '0%'); wg1.setAttribute('stop-color', '#2a607a');
+            const wg2 = document.createElementNS(ns, 'stop');
+            wg2.setAttribute('offset', '100%'); wg2.setAttribute('stop-color', '#1a4a62');
+            waterGrad.appendChild(wg1); waterGrad.appendChild(wg2);
+
+            // Settlement hex highlight
+            const settlGrad = document.createElementNS(ns, 'radialGradient');
+            settlGrad.setAttribute('id', 'settlGrad');
+            const sg1 = document.createElementNS(ns, 'stop');
+            sg1.setAttribute('offset', '0%'); sg1.setAttribute('stop-color', '#e8cc88');
+            const sg2 = document.createElementNS(ns, 'stop');
+            sg2.setAttribute('offset', '100%'); sg2.setAttribute('stop-color', '#c4a455');
+            settlGrad.appendChild(sg1); settlGrad.appendChild(sg2);
             
-            defs.appendChild(waterPattern);
-            defs.appendChild(landPattern);
+            defs.appendChild(landGrad);
+            defs.appendChild(waterGrad);
+            defs.appendChild(settlGrad);
             svg.appendChild(defs);
             
-            // Outer background
-            const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            bg.setAttribute('width', '900');
-            bg.setAttribute('height', '600');
-            bg.setAttribute('fill', '#2a5a7a');
-            bg.setAttribute('opacity', '0.6');
+            // Deep ocean background
+            const bg = document.createElementNS(ns, 'rect');
+            bg.setAttribute('width', '1300'); bg.setAttribute('height', '900');
+
+            bg.setAttribute('fill', '#1a3a4a');
             svg.appendChild(bg);
             
-            gameState.board.forEach((hex, i) => {
+            // Wave lines across the whole background for ocean texture
+            for (let wy = 20; wy < 900; wy += 18) {
+                for (let wx = 0; wx < 1300; wx += 60) {
+                    const wave = document.createElementNS(ns, 'path');
+                    wave.setAttribute('d', `M${wx},${wy} Q${wx+15},${wy-4} ${wx+30},${wy} Q${wx+45},${wy+4} ${wx+60},${wy}`);
+                    wave.setAttribute('stroke', '#2a5a72');
+                    wave.setAttribute('stroke-width', '0.8');
+                    wave.setAttribute('fill', 'none');
+                    wave.setAttribute('opacity', '0.6');
+                    svg.appendChild(wave);
+                }
+            }
+            
+            // Draw hexes — two passes: fill then stroke, so borders look clean
+            const landHexes = [];
+            const waterHexes = [];
+            gameState.board.forEach(hex => {
+                if (hex.type === 0) waterHexes.push(hex);
+                else landHexes.push(hex);
+            });
+            
+            // Water hexes first
+            waterHexes.forEach(hex => {
                 const x = hex.col * HEX_SIZE * 1.732 + (hex.row % 2) * HEX_SIZE * 0.866 + 50;
                 const y = hex.row * HEX_SIZE * 1.5 + 50;
+                const d = createHexagon(x, y, HEX_SIZE);
+                const path = document.createElementNS(ns, 'path');
+                path.setAttribute('d', d);
+                path.setAttribute('fill', 'url(#waterGrad)');
+                path.setAttribute('stroke', '#3a7a9a');
+                path.setAttribute('stroke-width', '0.8');
+                path.setAttribute('class', 'hex');
+                svg.appendChild(path);
+                // Small wave detail inside water hex
+                const wv = document.createElementNS(ns, 'path');
+                wv.setAttribute('d', `M${x-10},${y-2} Q${x},${y-6} ${x+10},${y-2}`);
+                wv.setAttribute('stroke', '#4a9ab8'); wv.setAttribute('stroke-width', '1');
+                wv.setAttribute('fill', 'none'); wv.setAttribute('opacity', '0.5');
+                svg.appendChild(wv);
+                const wv2 = document.createElementNS(ns, 'path');
+                wv2.setAttribute('d', `M${x-8},${y+4} Q${x},${y+0} ${x+8},${y+4}`);
+                wv2.setAttribute('stroke', '#4a9ab8'); wv2.setAttribute('stroke-width', '0.8');
+                wv2.setAttribute('fill', 'none'); wv2.setAttribute('opacity', '0.4');
+                svg.appendChild(wv2);
+            });
+            
+            // Land hexes with ink-style border
+            landHexes.forEach(hex => {
+                const x = hex.col * HEX_SIZE * 1.732 + (hex.row % 2) * HEX_SIZE * 0.866 + 50;
+                const y = hex.row * HEX_SIZE * 1.5 + 50;
+                const d = createHexagon(x, y, HEX_SIZE);
+                const isSettlement = hex.type >= 2;
                 
-                const hexPath = createHexagon(x, y, HEX_SIZE);
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.setAttribute('d', hexPath);
+                // Shadow for depth
+                const shadow = document.createElementNS(ns, 'path');
+                shadow.setAttribute('d', createHexagon(x + 1.5, y + 2, HEX_SIZE));
+                shadow.setAttribute('fill', 'rgba(0,0,0,0.35)');
+                shadow.setAttribute('stroke', 'none');
+                svg.appendChild(shadow);
                 
-                if (hex.type === 0) {
-                    path.setAttribute('fill', 'url(#waterPat)');
-                    path.setAttribute('stroke', '#2a6a9a');
-                } else {
-                    path.setAttribute('fill', 'url(#landPat)');
-                    path.setAttribute('stroke', '#8B6914');
-                }
-                path.setAttribute('stroke-width', '1.5');
+                const path = document.createElementNS(ns, 'path');
+                path.setAttribute('d', d);
+                path.setAttribute('fill', isSettlement ? 'url(#settlGrad)' : 'url(#landGrad)');
+                path.setAttribute('stroke', '#6b4a10');
+                path.setAttribute('stroke-width', isSettlement ? '2' : '1.2');
                 path.setAttribute('class', 'hex');
                 svg.appendChild(path);
                 
-                // Pagodas
+                // Terrain detail lines (ink hatching style)
+                if (!isSettlement) {
+                    for (let ti = 0; ti < 3; ti++) {
+                        const angle = (Math.PI * 2 / 3) * ti + 0.3;
+                        const tx1 = x + Math.cos(angle) * 5;
+                        const ty1 = y + Math.sin(angle) * 5;
+                        const tx2 = x + Math.cos(angle) * 12;
+                        const ty2 = y + Math.sin(angle) * 12;
+                        const tl = document.createElementNS(ns, 'line');
+                        tl.setAttribute('x1', tx1); tl.setAttribute('y1', ty1);
+                        tl.setAttribute('x2', tx2); tl.setAttribute('y2', ty2);
+                        tl.setAttribute('stroke', '#a08030');
+                        tl.setAttribute('stroke-width', '0.5');
+                        tl.setAttribute('opacity', '0.4');
+                        svg.appendChild(tl);
+                    }
+                }
+                
+                // Settlement markers
                 let pagodaCount = 0;
                 if (hex.type === 2) pagodaCount = 1;
                 else if (hex.type === 4) pagodaCount = 2;
                 else if (hex.type === 5) pagodaCount = 3;
                 
                 if (pagodaCount > 0) {
+                    // Settlement dot marker
+                    const dot = document.createElementNS(ns, 'circle');
+                    dot.setAttribute('cx', x); dot.setAttribute('cy', y - 6);
+                    dot.setAttribute('r', '3');
+                    dot.setAttribute('fill', '#8B0000');
+                    dot.setAttribute('opacity', '0.6');
+                    svg.appendChild(dot);
+                    
                     for (let p = 0; p < pagodaCount; p++) {
-                        const pagoda = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                        pagoda.setAttribute('x', x - (pagodaCount - 1) * 10 + p * 20);
-                        pagoda.setAttribute('y', y + 5);
-                        pagoda.setAttribute('text-anchor', 'middle');
-                        pagoda.setAttribute('fill', '#8B0000');
-                        pagoda.setAttribute('font-size', '18');
-                        pagoda.setAttribute('filter', 'drop-shadow(1px 1px 1px rgba(0,0,0,0.5))');
-                        pagoda.textContent = '⛩';
-                        svg.appendChild(pagoda);
+                        const px = x - (pagodaCount - 1) * 9 + p * 18;
+                        const py = y + 6;
+                        // Torii gate drawn with SVG shapes
+                        // Vertical posts
+                        const post1 = document.createElementNS(ns, 'rect');
+                        post1.setAttribute('x', px - 4); post1.setAttribute('y', py - 4);
+                        post1.setAttribute('width', '1.5'); post1.setAttribute('height', '7');
+                        post1.setAttribute('fill', '#8B0000');
+                        svg.appendChild(post1);
+                        const post2 = document.createElementNS(ns, 'rect');
+                        post2.setAttribute('x', px + 2.5); post2.setAttribute('y', py - 4);
+                        post2.setAttribute('width', '1.5'); post2.setAttribute('height', '7');
+                        post2.setAttribute('fill', '#8B0000');
+                        svg.appendChild(post2);
+                        // Top beam
+                        const beam = document.createElementNS(ns, 'rect');
+                        beam.setAttribute('x', px - 5.5); beam.setAttribute('y', py - 5);
+                        beam.setAttribute('width', '11'); beam.setAttribute('height', '1.5');
+                        beam.setAttribute('fill', '#8B0000');
+                        svg.appendChild(beam);
+                        // Second beam
+                        const beam2 = document.createElementNS(ns, 'rect');
+                        beam2.setAttribute('x', px - 4); beam2.setAttribute('y', py - 2.5);
+                        beam2.setAttribute('width', '8'); beam2.setAttribute('height', '1');
+                        beam2.setAttribute('fill', '#8B0000');
+                        svg.appendChild(beam2);
                     }
                 }
             });
+            
+            // Ink border around the whole map area
+            const mapBorder = document.createElementNS(ns, 'rect');
+            mapBorder.setAttribute('x', '2'); mapBorder.setAttribute('y', '2');
+            mapBorder.setAttribute('width', '896'); mapBorder.setAttribute('height', '596');
+            mapBorder.setAttribute('fill', 'none');
+            mapBorder.setAttribute('stroke', '#3d1a00');
+            mapBorder.setAttribute('stroke-width', '3');
+            svg.appendChild(mapBorder);
+            // Inner decorative border line
+            const mapBorder2 = document.createElementNS(ns, 'rect');
+            mapBorder2.setAttribute('x', '6'); mapBorder2.setAttribute('y', '6');
+            mapBorder2.setAttribute('width', '888'); mapBorder2.setAttribute('height', '588');
+            mapBorder2.setAttribute('fill', 'none');
+            mapBorder2.setAttribute('stroke', '#3d1a00');
+            mapBorder2.setAttribute('stroke-width', '0.8');
+            mapBorder2.setAttribute('opacity', '0.5');
+            svg.appendChild(mapBorder2);
         }
         
         function createHexagon(x, y, size) {
@@ -861,9 +983,58 @@
             });
         }
         
+        function drawCasteIcons(svg, caste, cx, cy, size) {
+            const ns = 'http://www.w3.org/2000/svg';
+            // White backing circle so icons pop against player color
+            const bg = document.createElementNS(ns, 'circle');
+            bg.setAttribute('cx', cx); bg.setAttribute('cy', cy);
+            bg.setAttribute('r', size + 3);
+            bg.setAttribute('fill', 'rgba(255,255,255,0.25)');
+            svg.appendChild(bg);
+            
+            if (caste === 'religion') {
+                const t = document.createElementNS(ns, 'polygon');
+                const h = size * 1.2;
+                t.setAttribute('points', `${cx},${cy - h} ${cx - h},${cy + h * 0.6} ${cx + h},${cy + h * 0.6}`);
+                t.setAttribute('fill', '#3498db');
+                t.setAttribute('stroke', 'white'); t.setAttribute('stroke-width', '1');
+                svg.appendChild(t);
+            } else if (caste === 'commerce') {
+                const c = document.createElementNS(ns, 'circle');
+                c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', size);
+                c.setAttribute('fill', '#2ecc71');
+                c.setAttribute('stroke', 'white'); c.setAttribute('stroke-width', '1');
+                svg.appendChild(c);
+            } else if (caste === 'military') {
+                const r = document.createElementNS(ns, 'rect');
+                r.setAttribute('x', cx - size); r.setAttribute('y', cy - size);
+                r.setAttribute('width', size * 2); r.setAttribute('height', size * 2);
+                r.setAttribute('fill', '#e74c3c');
+                r.setAttribute('stroke', 'white'); r.setAttribute('stroke-width', '1');
+                svg.appendChild(r);
+            } else if (caste === 'wild') {
+                const s = size * 0.65;
+                const t = document.createElementNS(ns, 'polygon');
+                t.setAttribute('points', `${cx - size * 1.4},${cy - s} ${cx - size * 1.4 - s},${cy + s * 0.6} ${cx - size * 1.4 + s},${cy + s * 0.6}`);
+                t.setAttribute('fill', '#3498db'); t.setAttribute('stroke', 'white'); t.setAttribute('stroke-width', '0.8');
+                svg.appendChild(t);
+                const c = document.createElementNS(ns, 'circle');
+                c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', s);
+                c.setAttribute('fill', '#2ecc71'); c.setAttribute('stroke', 'white'); c.setAttribute('stroke-width', '0.8');
+                svg.appendChild(c);
+                const r = document.createElementNS(ns, 'rect');
+                r.setAttribute('x', cx + size * 1.4 - s); r.setAttribute('y', cy - s);
+                r.setAttribute('width', s * 2); r.setAttribute('height', s * 2);
+                r.setAttribute('fill', '#e74c3c'); r.setAttribute('stroke', 'white'); r.setAttribute('stroke-width', '0.8');
+                svg.appendChild(r);
+            }
+        }
+        
         function renderTileFace(svg, tile, faceDown) {
-            // Clear existing text, keep the path
-            svg.querySelectorAll('text').forEach(t => t.remove());
+            // Clear everything except the hex path
+            Array.from(svg.children).forEach(el => {
+                if (el.tagName !== 'path') el.remove();
+            });
             const path = svg.querySelector('path');
             
             if (faceDown) {
@@ -878,18 +1049,28 @@
                 svg.appendChild(kanji);
             } else {
                 path.setAttribute('fill', getTileColor(tile, false));
-                const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                icon.setAttribute('x', '30');
-                icon.setAttribute('y', '24');
-                icon.setAttribute('text-anchor', 'middle');
-                icon.setAttribute('fill', 'rgba(255,255,255,0.9)');
-                icon.setAttribute('font-size', '14');
-                icon.textContent = getTileIcon(tile);
-                svg.appendChild(icon);
+                
+                if (tile.caste !== 'action') {
+                    // Draw caste shape icon at top
+                    drawCasteIcons(svg, tile.caste, 30, 20, 6);
+                }
+                
+                // Tile name
+                const name = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                name.setAttribute('x', '30');
+                name.setAttribute('y', tile.value > 0 ? '36' : '34');
+                name.setAttribute('text-anchor', 'middle');
+                name.setAttribute('fill', 'rgba(255,255,255,0.9)');
+                name.setAttribute('font-size', '8');
+                name.setAttribute('font-weight', 'bold');
+                name.textContent = tile.type.toUpperCase();
+                svg.appendChild(name);
+                
+                // Value
                 if (tile.value > 0) {
                     const val = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                     val.setAttribute('x', '30');
-                    val.setAttribute('y', '40');
+                    val.setAttribute('y', '45');
                     val.setAttribute('text-anchor', 'middle');
                     val.setAttribute('fill', 'white');
                     val.setAttribute('font-size', '11');
@@ -897,13 +1078,14 @@
                     val.textContent = tile.value;
                     svg.appendChild(val);
                 } else {
+                    // Action tile label centered
                     const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                     lbl.setAttribute('x', '30');
                     lbl.setAttribute('y', '38');
                     lbl.setAttribute('text-anchor', 'middle');
                     lbl.setAttribute('fill', 'rgba(255,255,255,0.9)');
                     lbl.setAttribute('font-size', '9');
-                    lbl.textContent = tile.type;
+                    lbl.textContent = tile.type.toUpperCase();
                     svg.appendChild(lbl);
                 }
             }
@@ -936,12 +1118,8 @@
         
         function getTileColor(tile, faceDown) {
             if (faceDown) return tile.color === 'red' ? '#6B0000' : '#6B4914';
-            if (tile.caste === 'religion') return '#6b3fa0';
-            if (tile.caste === 'commerce') return '#1a7a40';
-            if (tile.caste === 'military') return '#8B0000';
-            if (tile.caste === 'wild') return '#8B4513';
-            if (tile.caste === 'action') return '#1a4a7a';
-            return tile.color === 'red' ? '#8B0000' : '#8B6914';
+            // Face-up: background reflects player color
+            return tile.color === 'red' ? '#c0392b' : '#d4a017';
         }
         
         function getTileIcon(tile) {
@@ -956,21 +1134,146 @@
             return tile.type;
         }
         
-        function createTokens() {
-            const squareContainer = document.getElementById('squareTokens');
-            const triangleContainer = document.getElementById('triangleTokens');
-            const circleContainer = document.getElementById('circleTokens');
+        function hexCenterSVG(hex) {
+            const x = hex.col * HEX_SIZE * 1.732 + (hex.row % 2) * HEX_SIZE * 0.866 + 50;
+            const y = hex.row * HEX_SIZE * 1.5 + 50;
+            return {x, y};
+        }
+        
+        function distributeIdols() {
+            // Place idols on torii hexes per rulebook:
+            // type 2 = village (1 symbol -> 1 idol)
+            // type 4 = city (2 symbols -> 2 different idols)
+            // type 5 = Edo (3 symbols -> all 3 idols)
+            // Never duplicate a shape on the same hex.
+            const shapes = ['square', 'triangle', 'circle'];
+            const placed = [];
+            let idCounter = 0;
             
-            for (let i = 0; i < 7; i++) {
-                const square = createTokenElement('square', 's' + tokenIdCounter++);
-                squareContainer.appendChild(square);
+            gameState.board.forEach(hex => {
+                let count = 0;
+                if (hex.type === 2) count = 1;
+                else if (hex.type === 4) count = 2;
+                else if (hex.type === 5) count = 3;
+                if (count === 0) return;
                 
-                const triangle = createTokenElement('triangle', 't' + tokenIdCounter++);
-                triangleContainer.appendChild(triangle);
+                // Pick `count` distinct shapes at random
+                const pool = [...shapes];
+                for (let i = pool.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [pool[i], pool[j]] = [pool[j], pool[i]];
+                }
+                const chosen = pool.slice(0, count);
                 
-                const circle = createTokenElement('circle', 'c' + tokenIdCounter++);
-                circleContainer.appendChild(circle);
+                const center = hexCenterSVG(hex);
+                const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
+                
+                chosen.forEach((shape, idx) => {
+                    // Offset multiple idols so they fit on one hex (matches token offsets)
+                    const offsets = [
+                    {dx: 0,   dy: -14},
+                    {dx: -14, dy: 10},
+                    {dx: 14,  dy: 10}
+                ];
+                    const off = offsets[idx] || {dx: 0, dy: 0};
+                    placed.push({
+                        id: 'idol' + (idCounter++),
+                        type: shape,
+                        // store as percentage so it survives sync/resize
+                        xPercent: ((center.x + off.dx) / 900) * 100,
+                        yPercent: ((center.y + off.dy) / 600) * 100
+                    });
+                });
+            });
+            
+            gameState.tokens = placed;
+            renderIdols(placed);
+        }
+        
+        function renderIdols(idols) {
+            document.querySelectorAll('#boardContainer .draggable-token').forEach(t => t.remove());
+            const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
+            idols.forEach(idol => {
+                const el = createTokenElement(idol.type, idol.id);
+                el.style.left = ((idol.xPercent / 100) * boardRect.width - 12) + 'px';
+                el.style.top = ((idol.yPercent / 100) * boardRect.height - 12) + 'px';                document.getElementById('boardContainer').appendChild(el);
+            });
+        }
+        
+        function makeIdolSVG(type) {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', '0 0 24 24');
+            svg.setAttribute('class', 'tray-idol');
+            if (type === 'square') {
+                const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                r.setAttribute('x', '4'); r.setAttribute('y', '4');
+                r.setAttribute('width', '16'); r.setAttribute('height', '16');
+                r.setAttribute('fill', '#e74c3c'); r.setAttribute('stroke', '#c0392b'); r.setAttribute('stroke-width', '2');
+                svg.appendChild(r);
+            } else if (type === 'triangle') {
+                const t = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                t.setAttribute('points', '12,4 4,20 20,20');
+                t.setAttribute('fill', '#3498db'); t.setAttribute('stroke', '#2980b9'); t.setAttribute('stroke-width', '2');
+                svg.appendChild(t);
+            } else {
+                const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                c.setAttribute('cx', '12'); c.setAttribute('cy', '12'); c.setAttribute('r', '8');
+                c.setAttribute('fill', '#2ecc71'); c.setAttribute('stroke', '#27ae60'); c.setAttribute('stroke-width', '2');
+                svg.appendChild(c);
             }
+            return svg;
+        }
+        
+        function renderTrays() {
+            const opp = myPlayer === 1 ? 2 : 1;
+            const mine = (gameState.captured[myPlayer]) || [];
+            const theirs = (gameState.captured[opp]) || [];
+            
+            const myRow = document.getElementById('myTrayRow');
+            const oppRow = document.getElementById('oppTrayRow');
+            myRow.innerHTML = '';
+            oppRow.innerHTML = '';
+            
+            // My captured idols are draggable back onto the board
+            mine.forEach(idol => {
+                const svg = makeIdolSVG(idol.type);
+                svg.style.cursor = 'grab';
+                svg.dataset.idolId = idol.id;
+                svg.dataset.idolType = idol.type;
+                svg.addEventListener('mousedown', startUnclaim);
+                myRow.appendChild(svg);
+            });
+            // Opponent's are display-only
+            theirs.forEach(idol => oppRow.appendChild(makeIdolSVG(idol.type)));
+        }
+        
+        function startUnclaim(e) {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            
+            const svg = e.currentTarget;
+            const idolId = svg.dataset.idolId;
+            const idolType = svg.dataset.idolType;
+            
+            // Remove from captured list immediately
+            gameState.captured[myPlayer] = (gameState.captured[myPlayer] || [])
+                .filter(i => i.id !== idolId);
+            renderTrays();
+            
+            // Create a floating board token and start dragging it
+            const token = createTokenElement(idolType, idolId);
+            document.getElementById('boardContainer').appendChild(token);
+            const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
+            token.style.left = (e.clientX - boardRect.left - 12) + 'px';
+            token.style.top = (e.clientY - boardRect.top - 12) + 'px';
+            
+            draggedElement = token;
+            dragOffset.x = 12;
+            dragOffset.y = 12;
+            token.classList.add('dragging');
+            
+            document.addEventListener('mousemove', dragMove);
+            document.addEventListener('mouseup', dropToken);
         }
         
         function createTokenElement(type, id) {
@@ -1121,8 +1424,8 @@
             // boardX/Y are pixel coords within boardContainer.
             // Hex centers live in the 900x600 SVG viewBox; convert board px -> svg coords.
             const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
-            const svgX = (boardX / boardRect.width) * 900;
-            const svgY = (boardY / boardRect.height) * 600;
+            const svgX = (boardX / boardRect.width) * 1300;
+            const svgY = (boardY / boardRect.height) * 900;
             
             let best = null;
             let bestDist = Infinity;
@@ -1154,42 +1457,33 @@
             token.classList.remove('dragging');
             
             const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
-            const tokenStorage = document.getElementById('tokenStorage').getBoundingClientRect();
+            const trayRect = document.getElementById('myTray').getBoundingClientRect();
             
-            // Check if dropped on board (but not in token storage area)
-            if (e.clientX >= boardRect.left && e.clientX <= boardRect.right &&
-                e.clientY >= boardRect.top && e.clientY <= boardRect.bottom &&
-                !(e.clientX >= tokenStorage.left && e.clientX <= tokenStorage.right &&
-                  e.clientY >= tokenStorage.top && e.clientY <= tokenStorage.bottom)) {
+            // Claim: dropped over my own tray
+            if (e.clientX >= trayRect.left && e.clientX <= trayRect.right &&
+                e.clientY >= trayRect.top && e.clientY <= trayRect.bottom) {
                 
-                // Always append to boardContainer for tokens dropped on board
+                const idolId = token.dataset.tokenId;
+                const idolType = token.dataset.tokenType;
+                token.remove();
+                if (!gameState.captured[myPlayer]) gameState.captured[myPlayer] = [];
+                gameState.captured[myPlayer].push({id: idolId, type: idolType});
+                renderTrays();
+                draggedElement = null;
+                document.removeEventListener('mousemove', dragMove);
+                document.removeEventListener('mouseup', dropToken);
+                syncGameState();
+                return;
+            }
+            
+            // Otherwise keep on board wherever it was dropped — no snapping
+            if (token.parentElement.id !== 'boardContainer') {
                 document.getElementById('boardContainer').appendChild(token);
-                
-                // Snap to nearest hex center (token is 24px, center it on the hex)
-                const boardX = e.clientX - boardRect.left - dragOffset.x;
-                const boardY = e.clientY - boardRect.top - dragOffset.y;
-                const snap = snapToNearestHex(boardX + 12, boardY + 12);
-                if (snap) {
-                    token.style.left = (snap.x - 12) + 'px';
-                    token.style.top = (snap.y - 12) + 'px';
-                }
-            } else if (e.clientX >= tokenStorage.left && e.clientX <= tokenStorage.right &&
-                       e.clientY >= tokenStorage.top && e.clientY <= tokenStorage.bottom) {
-                // Return to original storage container if dropped back in storage
-                const tokenType = token.dataset.tokenType;
-                if (tokenType === 'square') {
-                    document.getElementById('squareTokens').appendChild(token);
-                } else if (tokenType === 'triangle') {
-                    document.getElementById('triangleTokens').appendChild(token);
-                } else if (tokenType === 'circle') {
-                    document.getElementById('circleTokens').appendChild(token);
-                }
             }
             
             draggedElement = null;
             document.removeEventListener('mousemove', dragMove);
             document.removeEventListener('mouseup', dropToken);
-            
             syncGameState();
         }
         
@@ -1251,45 +1545,34 @@
         function updateUI() {
             document.getElementById('redCount').textContent = gameState.redDeck.length;
             document.getElementById('yellowCount').textContent = gameState.yellowDeck.length;
-            
-            const redDeck = document.getElementById('redDeck');
-            const yellowDeck = document.getElementById('yellowDeck');
-            
-            if (gameState.redDeck.length === 0) redDeck.classList.add('empty');
-            if (gameState.yellowDeck.length === 0) yellowDeck.classList.add('empty');
-            
-            const turnText = `Player ${gameState.currentTurn}'s Turn`;
-            document.getElementById('turnIndicator').textContent = turnText;
+            if (gameState.redDeck.length === 0) document.getElementById('redDeck').classList.add('empty');
+            if (gameState.yellowDeck.length === 0) document.getElementById('yellowDeck').classList.add('empty');
         }
         
-        function endTurn() {
-            gameState.currentTurn = gameState.currentTurn === 1 ? 2 : 1;
-            updateUI();
-            syncGameState();
-        }
         
         function syncGameState() {
             if (!conn || !conn.open) return;
             
-            const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
             const tiles = [];
             document.querySelectorAll('.draggable-tile').forEach(tile => {
                 if (tile.parentElement.id === 'boardContainer') {
                     const tileId = tile.dataset.tileId;
-                    // Find tile data from decks or create it
-                    let tileData = gameState.redDeck.find(t => t.id === tileId) || 
+                    let tileData = gameState.redDeck.find(t => t.id === tileId) ||
                                   gameState.yellowDeck.find(t => t.id === tileId);
                     if (!tileData) {
                         const color = tileId.startsWith('r') ? 'red' : 'yellow';
                         const index = parseInt(tileId.substring(1));
                         tileData = {...TILE_TYPES[index], id: tileId, color: color};
                     }
-                    
-                    // Store as percentage of board size
+                    // Store position in SVG viewBox coords via getScreenCTM
+                    const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
+                    const px = parseFloat(tile.style.left) + boardRect.left;
+                    const py = parseFloat(tile.style.top) + boardRect.top;
+                    const svgPt = boardPxToSVG(px, py);
                     tiles.push({
                         id: tileId,
-                        xPercent: (parseFloat(tile.style.left) / boardRect.width) * 100,
-                        yPercent: (parseFloat(tile.style.top) / boardRect.height) * 100,
+                        svgX: svgPt.x,
+                        svgY: svgPt.y,
                         faceDown: tile.dataset.faceDown === 'true',
                         zIndex: tile.style.zIndex,
                         tileData: tileData
@@ -1300,19 +1583,20 @@
             const tokens = [];
             document.querySelectorAll('.draggable-token').forEach(token => {
                 if (token.parentElement.id === 'boardContainer') {
-                    // Store as percentage of board size
+                    const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
+                    const px = parseFloat(token.style.left) + 12 + boardRect.left;
+                    const py = parseFloat(token.style.top) + 12 + boardRect.top;
+                    const svgPt = boardPxToSVG(px, py);
                     tokens.push({
                         id: token.dataset.tokenId,
                         type: token.dataset.tokenType,
-                        xPercent: (parseFloat(token.style.left) / boardRect.width) * 100,
-                        yPercent: (parseFloat(token.style.top) / boardRect.height) * 100
+                        svgX: svgPt.x,
+                        svgY: svgPt.y
                     });
                 }
             });
             
             const handCount = document.querySelectorAll('#playerHand .draggable-tile').length;
-            
-            // Update local gameState before sending
             gameState.tiles = tiles;
             gameState.tokens = tokens;
             
@@ -1321,7 +1605,8 @@
                 data: {
                     ...gameState,
                     opponentHandCount: handCount,
-                    lastPlayedId: lastPlayedId
+                    lastPlayedId: lastPlayedId,
+                    captured: gameState.captured
                 }
             });
         }
@@ -1335,6 +1620,9 @@
                     if (newState.lastPlayedId !== undefined) {
                         lastPlayedId = newState.lastPlayedId;
                     }
+                    if (newState.captured) {
+                        gameState.captured = newState.captured;
+                    }
                     
                     updateBoardTiles(newState.tiles || []);
                     updateBoardTokens(newState.tokens || []);
@@ -1344,22 +1632,17 @@
                     drawBoard();
                     updateUI();
                     highlightLastPlayed();
+                    renderTrays();
                     break;
             }
         }
         
         function updateBoardTiles(tiles) {
-            document.querySelectorAll('#boardContainer .draggable-tile').forEach(tile => {
-                tile.remove();
-            });
-            
-            const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
-            
+            document.querySelectorAll('#boardContainer .draggable-tile').forEach(t => t.remove());
             tiles.forEach(tileData => {
-                // Use included tile data or recreate it
                 let tile = tileData.tileData;
                 if (!tile) {
-                    tile = gameState.redDeck.find(t => t.id === tileData.id) || 
+                    tile = gameState.redDeck.find(t => t.id === tileData.id) ||
                           gameState.yellowDeck.find(t => t.id === tileData.id);
                     if (!tile) {
                         const color = tileData.id.startsWith('r') ? 'red' : 'yellow';
@@ -1367,28 +1650,22 @@
                         tile = {...TILE_TYPES[index], id: tileData.id, color: color};
                     }
                 }
-                
                 const tileEl = createTileElement(tile, tileData.faceDown);
-                // Convert percentages back to pixels based on current board size
-                tileEl.style.left = (tileData.xPercent * boardRect.width / 100) + 'px';
-                tileEl.style.top = (tileData.yPercent * boardRect.height / 100) + 'px';
+                const px = svgToBoardPx(tileData.svgX, tileData.svgY);
+                tileEl.style.left = px.x + 'px';
+                tileEl.style.top = px.y + 'px';
                 tileEl.style.zIndex = tileData.zIndex;
                 document.getElementById('boardContainer').appendChild(tileEl);
             });
         }
         
         function updateBoardTokens(tokens) {
-            document.querySelectorAll('#boardContainer .draggable-token').forEach(token => {
-                token.remove();
-            });
-            
-            const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
-            
+            document.querySelectorAll('#boardContainer .draggable-token').forEach(t => t.remove());
             tokens.forEach(tokenData => {
                 const tokenEl = createTokenElement(tokenData.type, tokenData.id);
-                // Convert percentages back to pixels based on current board size
-                tokenEl.style.left = (tokenData.xPercent * boardRect.width / 100) + 'px';
-                tokenEl.style.top = (tokenData.yPercent * boardRect.height / 100) + 'px';
+                const px = svgToBoardPx(tokenData.svgX, tokenData.svgY);
+                tokenEl.style.left = (px.x - 12) + 'px';
+                tokenEl.style.top = (px.y - 12) + 'px';
                 document.getElementById('boardContainer').appendChild(tokenEl);
             });
         }
