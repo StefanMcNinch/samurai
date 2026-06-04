@@ -732,12 +732,14 @@
             drawBoard();
             createDeckTiles();
             distributeIdols();
-            // Defer idol rendering until after SVG is fully painted
-            requestAnimationFrame(() => {
-                renderIdols(gameState.tokens);
-                renderTrays();
-            });
             updateUI();
+            // Double rAF ensures SVG is fully painted before getScreenCTM() is called
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    renderIdols(gameState.tokens);
+                    renderTrays();
+                });
+            });
         }
         
         function shuffleArray(array) {
@@ -1628,20 +1630,25 @@
                     if (newState.captured) gameState.captured = newState.captured;
                     
                     requestAnimationFrame(() => {
-                        // First sync: draw board and deck tiles for Player 2
                         if (firstSync) {
                             drawBoard();
                             createDeckTiles();
-                            renderTrays();
+                            requestAnimationFrame(() => {
+                                updateBoardTiles(newState.tiles || []);
+                                updateBoardTokens(newState.tokens || []);
+                                renderTrays();
+                                highlightLastPlayed();
+                                updateUI();
+                            });
                         } else {
                             drawBoard();
+                            updateBoardTiles(newState.tiles || []);
+                            updateBoardTokens(newState.tokens || []);
+                            document.getElementById('opponentCount').textContent = newState.opponentHandCount || 0;
+                            updateUI();
+                            highlightLastPlayed();
+                            renderTrays();
                         }
-                        updateBoardTiles(newState.tiles || []);
-                        updateBoardTokens(newState.tokens || []);
-                        document.getElementById('opponentCount').textContent = newState.opponentHandCount || 0;
-                        updateUI();
-                        highlightLastPlayed();
-                        renderTrays();
                     });
                     break;
             }
