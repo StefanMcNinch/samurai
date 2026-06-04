@@ -549,9 +549,9 @@
             {type: 'Samurai', value: 1, caste: 'wild', fast: false},
             {type: 'Samurai', value: 2, caste: 'wild', fast: false},
             {type: 'Samurai', value: 3, caste: 'wild', fast: false},
-            {type: 'Ronin',   value: 1, caste: 'wild', fast: false},
-            {type: 'Ship',    value: 1, caste: 'wild', fast: false},
-            {type: 'Ship',    value: 2, caste: 'wild', fast: false},
+            {type: 'Ronin',   value: 1, caste: 'wild', fast: true},
+            {type: 'Ship',    value: 1, caste: 'wild', fast: true},
+            {type: 'Ship',    value: 2, caste: 'wild', fast: true},
             // Action tiles
             {type: 'Switch', value: 0, caste: 'action', fast: false},
             {type: 'Move',   value: 0, caste: 'action', fast: false}
@@ -1063,19 +1063,19 @@
                     drawCasteIcons(svg, tile.caste, 30, 20, 6);
                 }
                 
-                // Tile name
-                const name = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                name.setAttribute('x', '30');
-                name.setAttribute('y', tile.value > 0 ? '36' : '34');
-                name.setAttribute('text-anchor', 'middle');
-                name.setAttribute('fill', 'rgba(255,255,255,0.9)');
-                name.setAttribute('font-size', '8');
-                name.setAttribute('font-weight', 'bold');
-                name.textContent = tile.type.toUpperCase();
-                svg.appendChild(name);
-                
-                // Value
                 if (tile.value > 0) {
+                    // Tile name
+                    const name = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    name.setAttribute('x', '30');
+                    name.setAttribute('y', '36');
+                    name.setAttribute('text-anchor', 'middle');
+                    name.setAttribute('fill', 'rgba(255,255,255,0.9)');
+                    name.setAttribute('font-size', '8');
+                    name.setAttribute('font-weight', 'bold');
+                    name.textContent = tile.type.toUpperCase();
+                    svg.appendChild(name);
+                    
+                    // Value
                     const val = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                     val.setAttribute('x', '30');
                     val.setAttribute('y', '45');
@@ -1086,15 +1086,28 @@
                     val.textContent = tile.value;
                     svg.appendChild(val);
                 } else {
-                    // Action tile label centered
+                    // Action tile label centered (drawn once)
                     const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                     lbl.setAttribute('x', '30');
                     lbl.setAttribute('y', '38');
                     lbl.setAttribute('text-anchor', 'middle');
                     lbl.setAttribute('fill', 'rgba(255,255,255,0.9)');
                     lbl.setAttribute('font-size', '9');
+                    lbl.setAttribute('font-weight', 'bold');
                     lbl.textContent = tile.type.toUpperCase();
                     svg.appendChild(lbl);
+                }
+                
+                // Lightning bolt marks "fast" tiles (Ronin / Ship)
+                if (tile.fast) {
+                    const bolt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    bolt.setAttribute('x', '46');
+                    bolt.setAttribute('y', '18');
+                    bolt.setAttribute('text-anchor', 'middle');
+                    bolt.setAttribute('fill', '#ffe14d');
+                    bolt.setAttribute('font-size', '12');
+                    bolt.textContent = '\u26A1';
+                    svg.appendChild(bolt);
                 }
             }
         }
@@ -1188,8 +1201,8 @@
                         id: 'idol' + (idCounter++),
                         type: shape,
                         // store as percentage so it survives sync/resize
-                        xPercent: ((center.x + off.dx) / 900) * 100,
-                        yPercent: ((center.y + off.dy) / 600) * 100
+                        xPercent: ((center.x + off.dx) / 1300) * 100,
+                        yPercent: ((center.y + off.dy) / 900) * 100
                     });
                 });
             });
@@ -1453,8 +1466,8 @@
             
             // Convert chosen svg center back to board pixels
             return {
-                x: (best.svgX / 900) * boardRect.width,
-                y: (best.svgY / 600) * boardRect.height
+                x: (best.svgX / 1300) * boardRect.width,
+                y: (best.svgY / 900) * boardRect.height
             };
         }
         
@@ -1557,6 +1570,42 @@
             if (gameState.yellowDeck.length === 0) document.getElementById('yellowDeck').classList.add('empty');
         }
         
+        
+        // Convert between client (screen) pixels and the board SVG's 1300x900
+        // viewBox. Using getScreenCTM keeps positions correct regardless of each
+        // client's board size; a rect-based fallback guarantees finite numbers
+        // (never NaN) if the CTM isn't ready yet.
+        function boardPxToSVG(clientX, clientY) {
+            const svg = document.getElementById('board');
+            const ctm = svg && svg.getScreenCTM && svg.getScreenCTM();
+            if (ctm) {
+                const pt = svg.createSVGPoint();
+                pt.x = clientX; pt.y = clientY;
+                const p = pt.matrixTransform(ctm.inverse());
+                return { x: p.x, y: p.y };
+            }
+            const r = document.getElementById('boardContainer').getBoundingClientRect();
+            return {
+                x: ((clientX - r.left) / r.width) * 1300,
+                y: ((clientY - r.top) / r.height) * 900
+            };
+        }
+        
+        function svgToBoardPx(svgX, svgY) {
+            const svg = document.getElementById('board');
+            const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
+            const ctm = svg && svg.getScreenCTM && svg.getScreenCTM();
+            if (ctm) {
+                const pt = svg.createSVGPoint();
+                pt.x = svgX; pt.y = svgY;
+                const p = pt.matrixTransform(ctm);
+                return { x: p.x - boardRect.left, y: p.y - boardRect.top };
+            }
+            return {
+                x: (svgX / 1300) * boardRect.width,
+                y: (svgY / 900) * boardRect.height
+            };
+        }
         
         function syncGameState() {
             if (!conn || !conn.open) return;
