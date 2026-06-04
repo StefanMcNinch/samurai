@@ -688,8 +688,10 @@
                 document.getElementById('status').classList.add('connected');
                 
                 if (isHost) {
-                    initGame();
-                    syncGameState();
+                    requestAnimationFrame(() => {
+                        initGame();
+                        syncGameState();
+                    });
                 }
             });
             
@@ -730,7 +732,11 @@
             drawBoard();
             createDeckTiles();
             distributeIdols();
-            renderTrays();
+            // Defer idol rendering until after SVG is fully painted
+            requestAnimationFrame(() => {
+                renderIdols(gameState.tokens);
+                renderTrays();
+            });
             updateUI();
         }
         
@@ -1187,7 +1193,7 @@
             });
             
             gameState.tokens = placed;
-            renderIdols(placed);
+            // Rendering is handled separately after SVG layout
         }
         
         function renderIdols(idols) {
@@ -1615,24 +1621,28 @@
             switch (msg.type) {
                 case 'gameState':
                     const newState = msg.data;
+                    const firstSync = gameState.board.length === 0;
                     gameState = {...gameState, ...newState};
                     
-                    if (newState.lastPlayedId !== undefined) {
-                        lastPlayedId = newState.lastPlayedId;
-                    }
-                    if (newState.captured) {
-                        gameState.captured = newState.captured;
-                    }
+                    if (newState.lastPlayedId !== undefined) lastPlayedId = newState.lastPlayedId;
+                    if (newState.captured) gameState.captured = newState.captured;
                     
-                    updateBoardTiles(newState.tiles || []);
-                    updateBoardTokens(newState.tokens || []);
-                    
-                    document.getElementById('opponentCount').textContent = newState.opponentHandCount || 0;
-                    
-                    drawBoard();
-                    updateUI();
-                    highlightLastPlayed();
-                    renderTrays();
+                    requestAnimationFrame(() => {
+                        // First sync: draw board and deck tiles for Player 2
+                        if (firstSync) {
+                            drawBoard();
+                            createDeckTiles();
+                            renderTrays();
+                        } else {
+                            drawBoard();
+                        }
+                        updateBoardTiles(newState.tiles || []);
+                        updateBoardTokens(newState.tokens || []);
+                        document.getElementById('opponentCount').textContent = newState.opponentHandCount || 0;
+                        updateUI();
+                        highlightLastPlayed();
+                        renderTrays();
+                    });
                     break;
             }
         }
