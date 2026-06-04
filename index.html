@@ -690,7 +690,6 @@
                 if (isHost) {
                     requestAnimationFrame(() => {
                         initGame();
-                        syncGameState();
                     });
                 }
             });
@@ -738,6 +737,9 @@
                 requestAnimationFrame(() => {
                     renderIdols(gameState.tokens);
                     renderTrays();
+                    // Sync only after idols are in the DOM, otherwise syncGameState
+                    // reads zero tokens and sends an empty list. No-op in solo.
+                    syncGameState();
                 });
             });
         }
