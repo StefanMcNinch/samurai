@@ -1605,11 +1605,15 @@
             const tileId = tileEl.dataset.tileId;
             const faceDown = tileEl.dataset.faceDown === 'true';
             
-            let tile = gameState.redDeck.find(t => t.id === tileId) || 
-                      gameState.yellowDeck.find(t => t.id === tileId) ||
-                      gameState.tiles.find(t => t.id === tileId);
+            // Only check the decks (tiles still undrawn). Board tiles have been
+            // popped from the deck and won't be found here, so both paths fall
+            // through to the ID-based reconstruction below.
+            // NOTE: gameState.tiles is intentionally excluded — it holds sync-format
+            // objects {id,svgX,svgY,tileData,...} not raw tile data, which would
+            // cause tile.value/caste to be undefined and drop all text rendering.
+            let tile = gameState.redDeck.find(t => t.id === tileId) ||
+                       gameState.yellowDeck.find(t => t.id === tileId);
             
-            // Fall back to reconstructing from id if not found
             if (!tile) {
                 const color = tileId.startsWith('r') ? 'red' : 'yellow';
                 const index = parseInt(tileId.substring(1));
