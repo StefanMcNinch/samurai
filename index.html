@@ -1398,47 +1398,95 @@
             if (el) el.classList.add('last-played');
         }
         
+        // Half-dimensions of a tile (CSS: 60x52) for converting between the
+        // tile's top-left (style.left/top) and its center (hex coordinates).
+        const TILE_HALF_W = 30, TILE_HALF_H = 26;
+        
+        function returnTileToHand(tile) {
+            const hand = document.getElementById('playerHand');
+            if (tile.parentElement !== hand) hand.appendChild(tile);
+            // Clear board positioning so it rejoins the hand stack cleanly.
+            tile.style.left = '';
+            tile.style.top = '';
+            tile.style.zIndex = '';
+            delete tile.dataset.svgX;
+            delete tile.dataset.svgY;
+            if (tile.dataset.faceDown === 'true') {
+                tile.dataset.faceDown = 'false';
+                updateTileVisual(tile);
+            }
+            if (lastPlayedId === tile.dataset.tileId) {
+                lastPlayedId = null;
+                highlightLastPlayed();
+            }
+        }
+        
         function dropTile(e) {
             if (!draggedElement) return;
             
             const tile = draggedElement;
             tile.classList.remove('dragging');
             
-            const handRect = document.getElementById('playerHand').getBoundingClientRect();
-            if (e.clientX >= handRect.left && e.clientX <= handRect.right &&
-                e.clientY >= handRect.top && e.clientY <= handRect.bottom) {
-                
-                const cameFromBoard = tile.parentElement.id === 'boardContainer';
-                
-                if (tile.parentElement.id !== 'playerHand') {
-                    document.getElementById('playerHand').appendChild(tile);
-                    
-                    if (tile.dataset.faceDown === 'true') {
-                        tile.dataset.faceDown = 'false';
-                        updateTileVisual(tile);
-                    }
-                }
-                
-                // Undo: if returning the last-played tile from the board, clear the highlight
-                if (cameFromBoard && lastPlayedId === tile.dataset.tileId) {
-                    lastPlayedId = null;
-                    highlightLastPlayed();
-                }
-            }
-            else if (e.clientX >= document.getElementById('boardContainer').getBoundingClientRect().left) {
-                if (tile.parentElement.id !== 'boardContainer') {
-                    document.getElementById('boardContainer').appendChild(tile);
-                }
-                // Mark this as the last-played tile (only when it lands on the board)
-                lastPlayedId = tile.dataset.tileId;
-                highlightLastPlayed();
-            }
-            
-            updateStackOrder(e.clientX, e.clientY);
-            
+            // Tear down drag state up front so every early return stays clean.
             draggedElement = null;
             document.removeEventListener('mousemove', dragMove);
             document.removeEventListener('mouseup', dropTile);
+            
+            const handRect = document.getElementById('playerHand').getBoundingClientRect();
+            const overHand = e.clientX >= handRect.left && e.clientX <= handRect.right &&
+                             e.clientY >= handRect.top && e.clientY <= handRect.bottom;
+            if (overHand) {
+                returnTileToHand(tile);
+                syncGameState();
+                return;
+            }
+            
+            const boardContainer = document.getElementById('boardContainer');
+            const boardRect = boardContainer.getBoundingClientRect();
+            const overBoard = e.clientX >= boardRect.left && e.clientX <= boardRect.right &&
+                              e.clientY >= boardRect.top && e.clientY <= boardRect.bottom;
+            if (!overBoard) {
+                // Dropped in dead space -> return to hand instead of losing it.
+                returnTileToHand(tile);
+                syncGameState();
+                return;
+            }
+            
+            // Tile center at the drop point, expressed in board-relative pixels.
+            // (e.clientX - boardRect.left - dragOffset.x) is the tile's top-left,
+            // independent of whichever container it was dragged from.
+            const centerX = e.clientX - boardRect.left - dragOffset.x + TILE_HALF_W;
+            const centerY = e.clientY - boardRect.top - dragOffset.y + TILE_HALF_H;
+            
+            const snap = snapToNearestHex(centerX, centerY);
+            if (!snap) {
+                // Not near any hex -> reject rather than leave it floating.
+                returnTileToHand(tile);
+                syncGameState();
+                return;
+            }
+            
+            // One tile per hex: if another board tile already sits here, bounce back.
+            const occupied = Array.from(boardContainer.querySelectorAll('.draggable-tile'))
+                .some(t => t !== tile &&
+                    Math.round(parseFloat(t.dataset.svgX)) === Math.round(snap.svgX) &&
+                    Math.round(parseFloat(t.dataset.svgY)) === Math.round(snap.svgY));
+            if (occupied) {
+                returnTileToHand(tile);
+                syncGameState();
+                return;
+            }
+            
+            // Place: re-parent if needed, then position from the canonical hex center.
+            if (tile.parentElement !== boardContainer) boardContainer.appendChild(tile);
+            tile.dataset.svgX = snap.svgX;
+            tile.dataset.svgY = snap.svgY;
+            tile.style.left = (snap.x - TILE_HALF_W) + 'px';
+            tile.style.top = (snap.y - TILE_HALF_H) + 'px';
+            tile.style.zIndex = 100;
+            
+            lastPlayedId = tile.dataset.tileId;
+            highlightLastPlayed();
             
             syncGameState();
         }
@@ -1466,10 +1514,13 @@
             // Only snap if reasonably close to a hex center (within ~1.2 hex radii)
             if (!best || bestDist > HEX_SIZE * 1.2) return null;
             
-            // Convert chosen svg center back to board pixels
+            // Convert chosen svg center back to board pixels; also return the
+            // canonical svg center (the single source of truth for this tile).
             return {
                 x: (best.svgX / 1300) * boardRect.width,
-                y: (best.svgY / 900) * boardRect.height
+                y: (best.svgY / 900) * boardRect.height,
+                svgX: best.svgX,
+                svgY: best.svgY
             };
         }
         
@@ -1623,15 +1674,24 @@
                         const index = parseInt(tileId.substring(1));
                         tileData = {...TILE_TYPES[index], id: tileId, color: color};
                     }
-                    // Store position in SVG viewBox coords via getScreenCTM
-                    const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
-                    const px = parseFloat(tile.style.left) + boardRect.left;
-                    const py = parseFloat(tile.style.top) + boardRect.top;
-                    const svgPt = boardPxToSVG(px, py);
+                    // Canonical position = hex center in SVG viewBox coords.
+                    // Prefer the exact value stored at placement; otherwise derive
+                    // it from the tile's center (top-left + half tile).
+                    let svgX, svgY;
+                    if (tile.dataset.svgX !== undefined && tile.dataset.svgY !== undefined) {
+                        svgX = parseFloat(tile.dataset.svgX);
+                        svgY = parseFloat(tile.dataset.svgY);
+                    } else {
+                        const boardRect = document.getElementById('boardContainer').getBoundingClientRect();
+                        const px = parseFloat(tile.style.left) + TILE_HALF_W + boardRect.left;
+                        const py = parseFloat(tile.style.top) + TILE_HALF_H + boardRect.top;
+                        const svgPt = boardPxToSVG(px, py);
+                        svgX = svgPt.x; svgY = svgPt.y;
+                    }
                     tiles.push({
                         id: tileId,
-                        svgX: svgPt.x,
-                        svgY: svgPt.y,
+                        svgX: svgX,
+                        svgY: svgY,
                         faceDown: tile.dataset.faceDown === 'true',
                         zIndex: tile.style.zIndex,
                         tileData: tileData
@@ -1720,8 +1780,10 @@
                 }
                 const tileEl = createTileElement(tile, tileData.faceDown);
                 const px = svgToBoardPx(tileData.svgX, tileData.svgY);
-                tileEl.style.left = px.x + 'px';
-                tileEl.style.top = px.y + 'px';
+                tileEl.dataset.svgX = tileData.svgX;
+                tileEl.dataset.svgY = tileData.svgY;
+                tileEl.style.left = (px.x - TILE_HALF_W) + 'px';
+                tileEl.style.top = (px.y - TILE_HALF_H) + 'px';
                 tileEl.style.zIndex = tileData.zIndex;
                 document.getElementById('boardContainer').appendChild(tileEl);
             });
