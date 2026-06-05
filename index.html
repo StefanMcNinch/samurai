@@ -490,6 +490,16 @@
             captured: {1: [], 2: []}
         };
 
+        // Arrange all non-dragging hand tiles in a visible row so they don't stack.
+        function layoutHand() {
+            const hand = document.getElementById('playerHand');
+            const GAP = 8;
+            Array.from(hand.querySelectorAll('.draggable-tile:not(.dragging)')).forEach((tile, i) => {
+                tile.style.left = (4 + i * (60 + GAP)) + 'px';
+                tile.style.top = '4px';
+            });
+        }
+
         function drawFromDeck(deckColor) {
             let deck;
             if (deckColor === 'red' && gameState.redDeck.length > 0) {
@@ -502,6 +512,7 @@
             const drawnTile = deck.pop();
             const tileEl = createTileElement(drawnTile, false);
             document.getElementById('playerHand').appendChild(tileEl);
+            layoutHand();
             syncGameState();
         }
         // Local state
@@ -1405,7 +1416,6 @@
         function returnTileToHand(tile) {
             const hand = document.getElementById('playerHand');
             if (tile.parentElement !== hand) hand.appendChild(tile);
-            // Clear board positioning so it rejoins the hand stack cleanly.
             tile.style.left = '';
             tile.style.top = '';
             tile.style.zIndex = '';
@@ -1419,6 +1429,7 @@
                 lastPlayedId = null;
                 highlightLastPlayed();
             }
+            layoutHand();
         }
         
         function dropTile(e) {
@@ -1427,7 +1438,6 @@
             const tile = draggedElement;
             tile.classList.remove('dragging');
             
-            // Tear down drag state up front so every early return stays clean.
             draggedElement = null;
             document.removeEventListener('mousemove', dragMove);
             document.removeEventListener('mouseup', dropTile);
@@ -1443,51 +1453,59 @@
             
             const boardContainer = document.getElementById('boardContainer');
             const boardRect = boardContainer.getBoundingClientRect();
-            const overBoard = e.clientX >= boardRect.left && e.clientX <= boardRect.right &&
-                              e.clientY >= boardRect.top && e.clientY <= boardRect.bottom;
+            // Use a generous margin so tiles dropped on edge hexes (which can render
+            // right up to the SVG viewBox boundary) aren't falsely rejected.
+            const MARGIN = 60;
+            const overBoard = e.clientX >= boardRect.left - MARGIN && e.clientX <= boardRect.right + MARGIN &&
+                              e.clientY >= boardRect.top  - MARGIN && e.clientY <= boardRect.bottom + MARGIN;
             if (!overBoard) {
-                // Dropped in dead space -> return to hand instead of losing it.
                 returnTileToHand(tile);
                 syncGameState();
                 return;
             }
             
-            // Tile center at the drop point, expressed in board-relative pixels.
-            // (e.clientX - boardRect.left - dragOffset.x) is the tile's top-left,
-            // independent of whichever container it was dragged from.
-            const centerX = e.clientX - boardRect.left - dragOffset.x + TILE_HALF_W;
-            const centerY = e.clientY - boardRect.top - dragOffset.y + TILE_HALF_H;
+            // Where the tile's top-left lands, board-relative, from the live cursor.
+            // This is computed from client coords so it's correct regardless of
+            // whichever container the tile was dragged from.
+            const left = e.clientX - boardRect.left - dragOffset.x;
+            const top  = e.clientY - boardRect.top  - dragOffset.y;
+            const centerX = left + TILE_HALF_W;
+            const centerY = top  + TILE_HALF_H;
             
-            const snap = snapToNearestHex(centerX, centerY);
-            if (!snap) {
-                // Not near any hex -> reject rather than leave it floating.
+            // Stacking prevention: reject if another board tile's center is within
+            // 50px of the drop center (tiles are 60x52, so this prevents overlap).
+            const tooClose = Array.from(boardContainer.querySelectorAll('.draggable-tile'))
+                .some(t => {
+                    if (t === tile) return false;
+                    const tLeft  = parseFloat(t.style.left)  || 0;
+                    const tTop   = parseFloat(t.style.top)   || 0;
+                    const tCx = tLeft + TILE_HALF_W;
+                    const tCy = tTop  + TILE_HALF_H;
+                    return Math.hypot(centerX - tCx, centerY - tCy) < 50;
+                });
+            if (tooClose) {
                 returnTileToHand(tile);
                 syncGameState();
                 return;
             }
             
-            // One tile per hex: if another board tile already sits here, bounce back.
-            const occupied = Array.from(boardContainer.querySelectorAll('.draggable-tile'))
-                .some(t => t !== tile &&
-                    Math.round(parseFloat(t.dataset.svgX)) === Math.round(snap.svgX) &&
-                    Math.round(parseFloat(t.dataset.svgY)) === Math.round(snap.svgY));
-            if (occupied) {
-                returnTileToHand(tile);
-                syncGameState();
-                return;
-            }
-            
-            // Place: re-parent if needed, then position from the canonical hex center.
+            // Place the tile exactly where the user dropped it.
             if (tile.parentElement !== boardContainer) boardContainer.appendChild(tile);
-            tile.dataset.svgX = snap.svgX;
-            tile.dataset.svgY = snap.svgY;
-            tile.style.left = (snap.x - TILE_HALF_W) + 'px';
-            tile.style.top = (snap.y - TILE_HALF_H) + 'px';
+            tile.style.left = left + 'px';
+            tile.style.top  = top  + 'px';
             tile.style.zIndex = 100;
             
-            lastPlayedId = tile.dataset.tileId;
-            highlightLastPlayed();
+            // Store SVG-space center for cross-client sync.
+            const svgPt = boardPxToSVG(centerX + boardRect.left, centerY + boardRect.top);
+            tile.dataset.svgX = svgPt.x;
+            tile.dataset.svgY = svgPt.y;
             
+            // Apply last-played glow directly so it can't be lost to a query race.
+            document.querySelectorAll('.draggable-tile.last-played').forEach(t => t.classList.remove('last-played'));
+            lastPlayedId = tile.dataset.tileId;
+            tile.classList.add('last-played');
+            
+            layoutHand();
             syncGameState();
         }
         
