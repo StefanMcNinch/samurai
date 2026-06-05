@@ -490,13 +490,18 @@
             captured: {1: [], 2: []}
         };
 
-        // Arrange all non-dragging hand tiles in a visible row so they don't stack.
+        // Arrange all non-dragging hand tiles in a wrapping grid so they stay
+        // within the hand box regardless of how many tiles the player holds.
         function layoutHand() {
             const hand = document.getElementById('playerHand');
-            const GAP = 8;
-            Array.from(hand.querySelectorAll('.draggable-tile:not(.dragging)')).forEach((tile, i) => {
-                tile.style.left = (4 + i * (60 + GAP)) + 'px';
-                tile.style.top = '4px';
+            const tiles = Array.from(hand.querySelectorAll('.draggable-tile:not(.dragging)'));
+            if (tiles.length === 0) return;
+            const TILE_W = 60, TILE_H = 52, GAP = 6, PAD = 15, TITLE_H = 45;
+            const usable = hand.clientWidth - PAD * 2;
+            const perRow = Math.max(1, Math.floor((usable + GAP) / (TILE_W + GAP)));
+            tiles.forEach((tile, i) => {
+                tile.style.left = (PAD + (i % perRow) * (TILE_W + GAP)) + 'px';
+                tile.style.top  = (TITLE_H + Math.floor(i / perRow) * (TILE_H + GAP)) + 'px';
             });
         }
 
@@ -1472,16 +1477,21 @@
             const centerX = left + TILE_HALF_W;
             const centerY = top  + TILE_HALF_H;
             
-            // Stacking prevention: reject if another board tile's center is within
-            // 50px of the drop center (tiles are 60x52, so this prevents overlap).
+            // Compute SVG-space center for the drop point. Used for both the
+            // occupancy check and for cross-client sync.
+            const svgPt = boardPxToSVG(centerX + boardRect.left, centerY + boardRect.top);
+            
+            // Stacking prevention in SVG space so it's board-size independent.
+            // Min distance between any two neighboring hex centers = 72.7 SVG units.
+            // Threshold of 43 (<60% of 72.7) catches same-hex drops only.
+            const SVG_THRESHOLD = 43;
             const tooClose = Array.from(boardContainer.querySelectorAll('.draggable-tile'))
                 .some(t => {
                     if (t === tile) return false;
-                    const tLeft  = parseFloat(t.style.left)  || 0;
-                    const tTop   = parseFloat(t.style.top)   || 0;
-                    const tCx = tLeft + TILE_HALF_W;
-                    const tCy = tTop  + TILE_HALF_H;
-                    return Math.hypot(centerX - tCx, centerY - tCy) < 50;
+                    const tx = parseFloat(t.dataset.svgX);
+                    const ty = parseFloat(t.dataset.svgY);
+                    if (isNaN(tx) || isNaN(ty)) return false;
+                    return Math.hypot(svgPt.x - tx, svgPt.y - ty) < SVG_THRESHOLD;
                 });
             if (tooClose) {
                 returnTileToHand(tile);
@@ -1495,8 +1505,7 @@
             tile.style.top  = top  + 'px';
             tile.style.zIndex = 100;
             
-            // Store SVG-space center for cross-client sync.
-            const svgPt = boardPxToSVG(centerX + boardRect.left, centerY + boardRect.top);
+            // Store SVG-space center for cross-client sync and future occupancy checks.
             tile.dataset.svgX = svgPt.x;
             tile.dataset.svgY = svgPt.y;
             
